@@ -1,7 +1,7 @@
 package main
 
 import (
-	"fmt"
+	"HoBot_Backend/pkg/router"
 	"github.com/gofiber/fiber/v2"
 	"github.com/joho/godotenv"
 	"log"
@@ -14,18 +14,20 @@ func main() {
 	if err != nil {
 		log.Fatal("Error loading .env file")
 	}
-	if ok := testEnvs([]string{"PORT", "DB_URL", "DB_NAME"}); !ok {
+	if ok := testEnvs([]string{"PORT", "MONGODB_URI", "DB_NAME"}); !ok {
 		log.Fatalln("Please add required envs")
 	}
 
 	//Http server
 	app := fiber.New()
 
+	router.Register(app)
+
 	// GET /api/register
-	app.Get("/api/*", func(c *fiber.Ctx) error {
+	/*	app.Get("/api/*", func(c *fiber.Ctx) error {
 		msg := fmt.Sprintf("✋ %s", c.Params("*"))
 		return c.SendString(msg) // => ✋ register
-	})
+	})*/
 	log.Fatal(app.Listen(":" + os.Getenv("PORT")))
 
 }
