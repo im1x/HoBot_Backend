@@ -1,6 +1,8 @@
 package model
 
+import "go.mongodb.org/mongo-driver/bson/primitive"
+
 type Token struct {
-	User         User   `bson:"user,omitempty" json:"user,omitempty"`
-	RefreshToken string `bson:"refresh_token,omitempty" json:"refresh_token,omitempty"`
+	UserId       primitive.ObjectID `bson:"user_id" json:"user_id"`
+	RefreshToken string             `bson:"refresh_token" json:"refresh_token"`
 }

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"HoBot_Backend/pkg/mongo"
 	"HoBot_Backend/pkg/router"
 	"github.com/gofiber/fiber/v2"
 	"github.com/joho/godotenv"
@@ -14,9 +15,16 @@ func main() {
 	if err != nil {
 		log.Fatal("Error loading .env file")
 	}
-	if ok := testEnvs([]string{"PORT", "MONGODB_URI", "DB_NAME"}); !ok {
+	if ok := testEnvs([]string{
+		"PORT",
+		"MONGODB_URI",
+		"DB_NAME",
+		"JWT_ACCESS_SECRET",
+		"JWT_REFRESH_SECRET"}); !ok {
 		log.Fatalln("Please add required envs")
 	}
+
+	mongo.Connect()
 
 	//Http server
 	app := fiber.New()
