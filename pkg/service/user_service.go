@@ -29,16 +29,16 @@ func Registration(user model.User) (*model.UserData, error) {
 
 	res, err := colUser.InsertOne(ctx, user)
 
-	accessToken, refreshToken := GenerateTokens(user)
-	err = saveToken(res.InsertedID, refreshToken)
-	if err != nil {
-		return nil, err
-	}
-
 	var userDto = model.UserDto{
 		Id:          res.InsertedID.(primitive.ObjectID),
 		Login:       user.Login,
 		IsConfirmed: user.IsConfirmed,
+	}
+
+	accessToken, refreshToken := GenerateTokens(userDto)
+	err = saveToken(res.InsertedID, refreshToken)
+	if err != nil {
+		return nil, err
 	}
 
 	resData := model.UserData{AccessToken: accessToken, RefreshToken: refreshToken, User: userDto}

@@ -3,9 +3,8 @@ package handler
 import (
 	"HoBot_Backend/pkg/model"
 	usetService "HoBot_Backend/pkg/service"
-	"encoding/json"
-	"fmt"
 	"github.com/gofiber/fiber/v2"
+	"time"
 )
 
 func Register(c *fiber.Ctx) error {
@@ -15,14 +14,16 @@ func Register(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusBadRequest).SendString(err.Error())
 	}
 
-	fmt.Printf("%+v\n", user)
-	s, _ := json.MarshalIndent(user, "", "\t")
-	fmt.Print(string(s))
-
 	res, err := usetService.Registration(*user)
 	if err != nil {
 		return err
 	}
+
+	cookie := new(fiber.Cookie)
+	cookie.Name = "refreshToken"
+	cookie.Value = res.RefreshToken
+	cookie.Expires = time.Now().Add(24 * time.Hour)
+	c.Cookie(cookie)
 
 	return c.JSON(res)
 }
