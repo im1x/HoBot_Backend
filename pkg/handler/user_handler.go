@@ -4,6 +4,7 @@ import (
 	"HoBot_Backend/pkg/model"
 	usetService "HoBot_Backend/pkg/service"
 	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v2/log"
 	"time"
 )
 
@@ -16,6 +17,7 @@ func Register(c *fiber.Ctx) error {
 
 	res, err := usetService.Registration(*user)
 	if err != nil {
+		log.Info(err)
 		return err
 	}
 

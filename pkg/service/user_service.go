@@ -5,6 +5,7 @@ import (
 	DB "HoBot_Backend/pkg/mongo"
 	"context"
 	"errors"
+	"github.com/gofiber/fiber/v2"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
@@ -15,13 +16,13 @@ var ctx = context.TODO()
 
 func Registration(user model.User) (*model.UserData, error) {
 	if user.Login == "" || user.Password == "" {
-		return nil, errors.New("login or password is empty")
+		return nil, fiber.NewError(fiber.StatusConflict, "login or password is empty")
 	}
 	colUser := DB.GetCollection(DB.Users)
 
 	candidate := colUser.FindOne(ctx, bson.M{"login": user.Login})
 	if !errors.Is(candidate.Err(), mongo.ErrNoDocuments) {
-		return nil, errors.New("login already used")
+		return nil, fiber.NewError(fiber.StatusUnauthorized, "login already used")
 	}
 
 	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(user.Password+user.Login), bcrypt.DefaultCost)
