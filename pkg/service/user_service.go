@@ -79,3 +79,7 @@ func Login(user model.User) (*model.UserData, error) {
 
 	return &resData, err
 }
+
+func Logout(refreshToken string) error {
+	return removeToken(refreshToken)
+}

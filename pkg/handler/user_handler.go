@@ -65,6 +65,16 @@ func Login(c *fiber.Ctx) error {
 }
 
 func Logout(c *fiber.Ctx) error {
+	refreshToken := c.Cookies("refreshToken")
+	if refreshToken == "" {
+		return fiber.NewError(fiber.StatusUnauthorized)
+	}
+
+	err := userService.Logout(refreshToken)
+	if err != nil {
+		return err
+	}
+	c.ClearCookie()
 
 	return nil
 }

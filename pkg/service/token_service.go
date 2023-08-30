@@ -60,3 +60,12 @@ func saveToken(uid interface{}, refreshToken string) error {
 
 	return err
 }
+
+func removeToken(refreshToken string) error {
+	colToken := DB.GetCollection(DB.Tokens)
+	one, err := colToken.DeleteOne(ctx, bson.M{"refresh_token": refreshToken})
+	if err != nil || one.DeletedCount == 0 {
+		return err
+	}
+	return nil
+}
