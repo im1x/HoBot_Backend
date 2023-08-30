@@ -46,3 +46,36 @@ func Registration(user model.User) (*model.UserData, error) {
 
 	return &resData, err
 }
+
+func Login(user model.User) (*model.UserData, error) {
+	if user.Login == "" || user.Password == "" {
+		return nil, fiber.NewError(fiber.StatusConflict, "login or password is empty")
+	}
+	colUser := DB.GetCollection(DB.Users)
+
+	var userDb = model.User{}
+	err := colUser.FindOne(ctx, bson.M{"login": user.Login}).Decode(&userDb)
+	if err != nil {
+		return nil, fiber.NewError(fiber.StatusUnauthorized, "login or password incorrect")
+	}
+	err = bcrypt.CompareHashAndPassword([]byte(userDb.Password), []byte(user.Password+user.Login))
+	if err != nil {
+		return nil, fiber.NewError(fiber.StatusUnauthorized, "login or password incorrect2")
+	}
+
+	var userDto = model.UserDto{
+		Id:          userDb.Id,
+		Login:       userDb.Login,
+		IsConfirmed: userDb.IsConfirmed,
+	}
+
+	accessToken, refreshToken := GenerateTokens(userDto)
+	err = saveToken(userDb.Id, refreshToken)
+	if err != nil {
+		return nil, err
+	}
+
+	resData := model.UserData{AccessToken: accessToken, RefreshToken: refreshToken, User: userDto}
+
+	return &resData, err
+}
