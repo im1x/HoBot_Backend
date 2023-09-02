@@ -1,6 +1,7 @@
 package model
 
 import (
+	"github.com/golang-jwt/jwt/v5"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
@@ -12,10 +13,19 @@ type User struct {
 	IsConfirmed bool               `bson:"confirmed,omitempty" json:"confirmed,omitempty"`
 }
 
+func (u User) ToUserDto() UserDto {
+	return UserDto{
+		Id:          u.Id,
+		Login:       u.Login,
+		IsConfirmed: u.IsConfirmed,
+	}
+}
+
 type UserDto struct {
 	Id          primitive.ObjectID `json:"id,omitempty"`
 	Login       string             `json:"login,omitempty"`
 	IsConfirmed bool               `json:"confirmed"`
+	jwt.RegisteredClaims
 }
 
 type UserData struct {

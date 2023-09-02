@@ -29,12 +29,8 @@ func Registration(user model.User) (*model.UserData, error) {
 	user.Password = string(hashedPassword)
 
 	res, err := colUser.InsertOne(ctx, user)
-
-	var userDto = model.UserDto{
-		Id:          res.InsertedID.(primitive.ObjectID),
-		Login:       user.Login,
-		IsConfirmed: user.IsConfirmed,
-	}
+	userDto := user.ToUserDto()
+	userDto.Id = res.InsertedID.(primitive.ObjectID)
 
 	accessToken, refreshToken := GenerateTokens(userDto)
 	err = saveToken(res.InsertedID, refreshToken)
@@ -63,11 +59,7 @@ func Login(user model.User) (*model.UserData, error) {
 		return nil, fiber.NewError(fiber.StatusUnauthorized, "login or password incorrect2")
 	}
 
-	var userDto = model.UserDto{
-		Id:          userDb.Id,
-		Login:       userDb.Login,
-		IsConfirmed: userDb.IsConfirmed,
-	}
+	userDto := userDb.ToUserDto()
 
 	accessToken, refreshToken := GenerateTokens(userDto)
 	err = saveToken(userDb.Id, refreshToken)
@@ -82,4 +74,35 @@ func Login(user model.User) (*model.UserData, error) {
 
 func Logout(refreshToken string) error {
 	return removeToken(refreshToken)
+}
+
+func RefreshToken(refreshToken string) (*model.UserData, error) {
+	colUser := DB.GetCollection(DB.Users)
+	userFromToken, err := validateRefreshToken(refreshToken)
+	if err != nil {
+		return nil, err
+	}
+
+	token, _ := findToken(refreshToken)
+	if err != nil || token == nil {
+		return nil, fiber.NewError(fiber.StatusUnauthorized)
+	}
+
+	var userDb model.User
+	err = colUser.FindOne(ctx, bson.M{"_id": userFromToken.Id}).Decode(&userDb)
+	if err != nil {
+		return nil, err
+	}
+
+	userDto := userDb.ToUserDto()
+
+	accessToken, refreshToken := GenerateTokens(userDto)
+	err = saveToken(userDto.Id, refreshToken)
+	if err != nil {
+		return nil, err
+	}
+
+	resData := model.UserData{AccessToken: accessToken, RefreshToken: refreshToken, User: userDto}
+
+	return &resData, err
 }

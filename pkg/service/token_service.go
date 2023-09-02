@@ -14,7 +14,7 @@ import (
 
 func generateToken(user model.UserDto, secret string, expHour time.Duration) (string, error) {
 	claims := jwt.MapClaims{
-		"user_id":      user.Id,
+		"id":           user.Id,
 		"is_confirmed": user.IsConfirmed,
 		"exp":          time.Now().Add(time.Hour * expHour).Unix(),
 	}
@@ -36,6 +36,25 @@ func GenerateTokens(user model.UserDto) (string, string) {
 	}
 
 	return accessToken, refreshToken
+}
+
+func isTokenValid(tokenString, secret string) (*model.UserDto, error) {
+	token, err := jwt.ParseWithClaims(tokenString, &model.UserDto{}, func(token *jwt.Token) (interface{}, error) {
+		return []byte(secret), nil
+	}, jwt.WithLeeway(5*time.Second))
+	if claims, ok := token.Claims.(*model.UserDto); ok && token.Valid {
+		return claims, nil
+	} else {
+		return nil, err
+	}
+}
+
+func validateAccessToken(token string) (*model.UserDto, error) {
+	return isTokenValid(token, os.Getenv("JWT_ACCESS_SECRET"))
+}
+
+func validateRefreshToken(token string) (*model.UserDto, error) {
+	return isTokenValid(token, os.Getenv("JWT_REFRESH_SECRET"))
 }
 
 func saveToken(uid interface{}, refreshToken string) error {
@@ -62,10 +81,17 @@ func saveToken(uid interface{}, refreshToken string) error {
 }
 
 func removeToken(refreshToken string) error {
-	colToken := DB.GetCollection(DB.Tokens)
-	one, err := colToken.DeleteOne(ctx, bson.M{"refresh_token": refreshToken})
+	one, err := DB.GetCollection(DB.Tokens).DeleteOne(ctx, bson.M{"refresh_token": refreshToken})
 	if err != nil || one.DeletedCount == 0 {
 		return err
 	}
 	return nil
+}
+func findToken(token string) (*model.Token, error) {
+	var tokenDB model.Token
+	err := DB.GetCollection(DB.Tokens).FindOne(ctx, bson.M{"refresh_token": token}).Decode(&tokenDB)
+	if err != nil {
+		return nil, err
+	}
+	return &tokenDB, nil
 }

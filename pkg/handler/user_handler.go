@@ -6,6 +6,7 @@ import (
 	"github.com/go-playground/validator/v10"
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/log"
+	"github.com/golang-jwt/jwt/v5"
 	"time"
 )
 
@@ -80,11 +81,28 @@ func Logout(c *fiber.Ctx) error {
 }
 
 func Refresh(c *fiber.Ctx) error {
+	refreshToken := c.Cookies("refreshToken")
+	if refreshToken == "" {
+		return fiber.NewError(fiber.StatusUnauthorized)
+	}
+	res, err := userService.RefreshToken(refreshToken)
+	if err != nil {
+		return err
+	}
 
-	return nil
+	cookie := new(fiber.Cookie)
+	cookie.Name = "refreshToken"
+	cookie.Value = res.RefreshToken
+	cookie.Expires = time.Now().Add(24 * time.Hour)
+	cookie.HTTPOnly = true
+	c.Cookie(cookie)
+
+	return c.JSON(res)
 }
 
 func Users(c *fiber.Ctx) error {
-
-	return nil
+	user := c.Locals("user").(*jwt.Token)
+	claims := user.Claims.(jwt.MapClaims)
+	name := claims["id"].(string)
+	return c.SendString("Welcome " + name)
 }
