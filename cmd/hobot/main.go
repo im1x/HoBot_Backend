@@ -3,6 +3,7 @@ package main
 import (
 	"HoBot_Backend/pkg/mongo"
 	"HoBot_Backend/pkg/router"
+	"HoBot_Backend/pkg/socketio"
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/cors"
 	"github.com/joho/godotenv"
@@ -21,7 +22,8 @@ func main() {
 		"MONGODB_URI",
 		"DB_NAME",
 		"JWT_ACCESS_SECRET",
-		"JWT_REFRESH_SECRET"}); !ok {
+		"JWT_REFRESH_SECRET",
+		"WS_PORT"}); !ok {
 		log.Fatalln("Please add required envs")
 	}
 
@@ -41,6 +43,7 @@ func main() {
 		msg := fmt.Sprintf("✋ %s", c.Params("*"))
 		return c.SendString(msg) // => ✋ register
 	})*/
+	go socketio.Start()
 	log.Fatal(app.Listen(":" + os.Getenv("PORT")))
 
 }

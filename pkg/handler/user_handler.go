@@ -32,8 +32,9 @@ func Register(c *fiber.Ctx) error {
 	cookie := new(fiber.Cookie)
 	cookie.Name = "refreshToken"
 	cookie.Value = res.RefreshToken
-	cookie.Expires = time.Now().Add(24 * time.Hour)
+	cookie.Expires = time.Now().Add(1440 * time.Hour)
 	cookie.HTTPOnly = true
+	cookie.SameSite = "None"
 	c.Cookie(cookie)
 
 	return c.JSON(res)
@@ -58,7 +59,7 @@ func Login(c *fiber.Ctx) error {
 	cookie := new(fiber.Cookie)
 	cookie.Name = "refreshToken"
 	cookie.Value = res.RefreshToken
-	cookie.Expires = time.Now().Add(24 * time.Hour)
+	cookie.Expires = time.Now().Add(1440 * time.Hour)
 	cookie.HTTPOnly = true
 	c.Cookie(cookie)
 
@@ -93,7 +94,7 @@ func Refresh(c *fiber.Ctx) error {
 	cookie := new(fiber.Cookie)
 	cookie.Name = "refreshToken"
 	cookie.Value = res.RefreshToken
-	cookie.Expires = time.Now().Add(24 * time.Hour)
+	cookie.Expires = time.Now().Add(1440 * time.Hour)
 	cookie.HTTPOnly = true
 	c.Cookie(cookie)
 

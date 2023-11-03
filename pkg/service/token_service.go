@@ -28,8 +28,8 @@ func generateToken(user model.UserDto, secret string, expHour time.Duration) (st
 	return t, err
 }
 func GenerateTokens(user model.UserDto) (string, string) {
-	accessToken, err := generateToken(user, os.Getenv("JWT_ACCESS_SECRET"), 6)
-	refreshToken, err := generateToken(user, os.Getenv("JWT_REFRESH_SECRET"), 24)
+	accessToken, err := generateToken(user, os.Getenv("JWT_ACCESS_SECRET"), 600)
+	refreshToken, err := generateToken(user, os.Getenv("JWT_REFRESH_SECRET"), 1440)
 
 	if err != nil {
 		log.Error("Generate token error")
