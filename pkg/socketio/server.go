@@ -1,10 +1,20 @@
 package socketio
 
 import (
+	tokenService "HoBot_Backend/pkg/service"
 	"fmt"
 	"github.com/zishang520/engine.io/types"
 	"github.com/zishang520/socket.io/v2/socket"
 	"os"
+)
+
+var io *socket.Server
+
+type SocketEvent string
+
+const (
+	SendData  SocketEvent = "SendData"
+	TestEvent SocketEvent = "TestEvent"
 )
 
 func Start() {
@@ -12,24 +22,56 @@ func Start() {
 
 	serverOptions := socket.DefaultServerOptions()
 	cors := &types.Cors{
-		Origin:               "*",            // Replace with your allowed origin(s)
-		Methods:              "GET,POST",     // Replace with your allowed HTTP methods
-		AllowedHeaders:       "Content-Type", // Replace with your allowed headers
-		ExposedHeaders:       "",             // Replace with your exposed headers
-		MaxAge:               "3600",         // Replace with your max age
-		Credentials:          true,           // Set to true if you want to allow credentials (cookies, etc.)
-		PreflightContinue:    false,          // Set to true if you want to continue with preflight requests
-		OptionsSuccessStatus: 204,            // Replace with your desired status for preflight success
+		Origin:         "*",            // Replace with your allowed origin(s)
+		Methods:        "GET,POST",     // Replace with your allowed HTTP methods
+		AllowedHeaders: "Content-Type", // Replace with your allowed headers
+		//ExposedHeaders:       "",             // Replace with your exposed headers
+		//MaxAge:      "1",  // Replace with your max age
+		Credentials: true, // Set to true if you want to allow credentials (cookies, etc.)
+		//PreflightContinue:    false,          // Set to true if you want to continue with preflight requests
+		//OptionsSuccessStatus: 204,            // Replace with your desired status for preflight success
 	}
 
 	serverOptions.SetCors(cors)
-	io := socket.NewServer(httpServer, serverOptions)
+	io = socket.NewServer(httpServer, serverOptions)
+
+	io.Use(func(s *socket.Socket, next func(*socket.ExtendedError)) {
+		fmt.Printf("---middleware---\n")
+		auth := s.Handshake().Auth
+		if auth == nil {
+			next(socket.NewExtendedError("Unauthorized: auth not found", "401"))
+			return
+		}
+		token, err := getParam(auth, "token")
+		if err != nil {
+			next(socket.NewExtendedError("Unauthorized: token not found", "401"))
+			return
+		}
+		userDto, err := tokenService.ValidateAccessToken(token)
+		if err != nil {
+			next(socket.NewExtendedError("Unauthorized: invalid token", "401"))
+			return
+		}
+		s.Join(socket.Room(userDto.Id.Hex()))
+		fmt.Printf("Rooms: %v\n", s.Rooms())
+
+		next(nil)
+	})
 
 	io.On("connection", func(clients ...any) {
 		client := clients[0].(*socket.Socket)
-		fmt.Printf("connection %v\n", client.Id())
+
 		client.On("event", func(datas ...any) {
 			fmt.Printf("event %v\n", datas)
+		})
+		client.On("testEmit", func(datas ...any) {
+			fmt.Printf("testEmit %v\n", datas)
+			rm := client.Rooms().Keys()[0]
+			fmt.Printf("RoomSSSS: %v\n", client.Rooms())
+			fmt.Printf("Room: %v\n", rm)
+			var scks = io.Sockets().Adapter().Sockets(types.NewSet(rm)).Len()
+			fmt.Printf("scks: %v\n", scks)
+
 		})
 		client.On("disconnect", func(...any) {
 			fmt.Printf("disconnect %v\n", client.Id())
@@ -38,4 +80,16 @@ func Start() {
 	fmt.Println(" ┌───────────────────────────────────────────────────┐ ")
 	fmt.Print(" │       Socket.IO Server running on port: " + os.Getenv("WS_PORT") + "      │ ")
 	httpServer.Listen(":"+os.Getenv("WS_PORT"), nil)
+}
+
+func getParam(mapData any, paramName string) (string, error) {
+	paramString, ok := mapData.(map[string]interface{})[paramName].(string)
+	if !ok {
+		return "", fmt.Errorf("param %s not found", paramName)
+	}
+	return paramString, nil
+}
+
+func Emit(room string, event SocketEvent, data string) {
+	io.In(socket.Room(room)).Emit(string(event), data)
 }

@@ -42,6 +42,11 @@ func isTokenValid(tokenString, secret string) (*model.UserDto, error) {
 	token, err := jwt.ParseWithClaims(tokenString, &model.UserDto{}, func(token *jwt.Token) (interface{}, error) {
 		return []byte(secret), nil
 	}, jwt.WithLeeway(5*time.Second))
+
+	if err != nil {
+		return nil, err
+	}
+
 	if claims, ok := token.Claims.(*model.UserDto); ok && token.Valid {
 		return claims, nil
 	} else {
@@ -49,7 +54,7 @@ func isTokenValid(tokenString, secret string) (*model.UserDto, error) {
 	}
 }
 
-func validateAccessToken(token string) (*model.UserDto, error) {
+func ValidateAccessToken(token string) (*model.UserDto, error) {
 	return isTokenValid(token, os.Getenv("JWT_ACCESS_SECRET"))
 }
 
