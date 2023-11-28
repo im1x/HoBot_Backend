@@ -13,6 +13,7 @@ type CollectionName string
 const (
 	Users  CollectionName = "Users"
 	Tokens CollectionName = "Tokens"
+	Vkpl   CollectionName = "Vkpl"
 )
 
 var ctx = context.TODO()

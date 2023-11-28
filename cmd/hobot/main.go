@@ -23,7 +23,9 @@ func main() {
 		"DB_NAME",
 		"JWT_ACCESS_SECRET",
 		"JWT_REFRESH_SECRET",
-		"WS_PORT"}); !ok {
+		"WS_PORT",
+		"VKPL_LOGIN",
+		"VKPL_PASSWORD"}); !ok {
 		log.Fatalln("Please add required envs")
 	}
 
