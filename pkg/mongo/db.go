@@ -14,6 +14,7 @@ const (
 	Users  CollectionName = "Users"
 	Tokens CollectionName = "Tokens"
 	Vkpl   CollectionName = "Vkpl"
+	Config CollectionName = "Config"
 )
 
 var ctx = context.TODO()

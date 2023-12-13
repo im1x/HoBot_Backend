@@ -3,12 +3,15 @@ package main
 import (
 	"HoBot_Backend/pkg/mongo"
 	"HoBot_Backend/pkg/router"
+	"HoBot_Backend/pkg/service/vkplay"
 	"HoBot_Backend/pkg/socketio"
+	"context"
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/cors"
 	"github.com/joho/godotenv"
 	"log"
 	"os"
+	"time"
 )
 
 func main() {
@@ -30,6 +33,9 @@ func main() {
 	}
 
 	mongo.Connect()
+
+	ctx := context.Background()
+	vkplay.ConnectWS(ctx)
 
 	//Http server
 	app := fiber.New()
@@ -59,4 +65,8 @@ func testEnvs(enums []string) bool {
 		}
 	}
 	return successful
+}
+
+func NewContextWithTimeout() (context.Context, context.CancelFunc) {
+	return context.WithTimeout(context.Background(), 10*time.Second)
 }
