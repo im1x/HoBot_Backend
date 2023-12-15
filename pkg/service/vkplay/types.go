@@ -94,6 +94,10 @@ func (msg *ChatMsg) GetDisplayName() string {
 	return msg.Push.Pub.Data.Data.User.DisplayName
 }
 
+func (msg *ChatMsg) GetUser() *User {
+	return &msg.Push.Pub.Data.Data.User
+}
+
 //-----------
 
 type Config struct {

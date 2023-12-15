@@ -13,19 +13,16 @@ func getCommandFromMessage(message string) []string {
 	if message == "" {
 		return nil
 	}
-	commandAndParam := strings.Split(message, " ")
+	commandAndParam := strings.Fields(strings.ToLower(strings.TrimSpace(message)))
 	if len(commandAndParam) > 1 {
 		return commandAndParam[:2]
 	} else {
 		return commandAndParam[:1]
 	}
 }
-func isCommandAllowedOnChannel(command, channel string) string {
+func getCommandForAlias(command, channel string) (cmd string) {
 	if chnl, ok := channelsCommands.Channels[channel]; ok {
-		if cmd, ok := chnl.Aliases[command]; ok {
-			return cmd
-		}
-		return ""
+		cmd = chnl.Aliases[command]
 	}
-	return ""
+	return
 }

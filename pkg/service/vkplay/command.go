@@ -26,6 +26,5 @@ func AddCommand(name string, handler func(msg *ChatMsg), permissions int) {
 
 func helloCommand(msg *ChatMsg) {
 	txt := fmt.Sprintf("Hello, %s!", msg.GetDisplayName())
-	fmt.Println(txt)
-	SendMessageToChannel(txt, msg.GetChannelName(), nil)
+	SendMessageToChannel(txt, msg.GetChannelName(), msg.GetUser())
 }

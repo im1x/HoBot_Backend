@@ -310,14 +310,17 @@ func listen() {
 					}
 					fmt.Printf("%s: %s\n", from, text[0].(string))
 					cmdAndParam := getCommandFromMessage(text[0].(string))
-					/*					if len(cmdAndParam) == 1 {
-											fmt.Printf("%s\n", cmdAndParam[0])
-										} else {
-											fmt.Printf("%s: %s\n", cmdAndParam[0], cmdAndParam[1])
-										}*/
-					cmd := isCommandAllowedOnChannel(cmdAndParam[0], msg.GetChannelName())
-					fmt.Println(cmd)
-					Commands[cmd].Handler(&msg)
+					fmt.Printf("%s | len: %d\n", cmdAndParam, len(cmdAndParam))
+					if len(cmdAndParam) == 1 {
+						fmt.Printf("%s\n", cmdAndParam[0])
+					} else {
+						fmt.Printf("%s: %s\n", cmdAndParam[0], cmdAndParam[1])
+					}
+					cmd := getCommandForAlias(cmdAndParam[0], msg.GetChannelName())
+					if cmd != "" {
+						fmt.Println(cmd)
+						Commands[cmd].Handler(&msg)
+					}
 
 				}
 
