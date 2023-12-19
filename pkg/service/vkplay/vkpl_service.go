@@ -283,39 +283,74 @@ func listen() {
 				err = json.Unmarshal(p, &msg)
 				if err != nil {
 					log.Error("Error while unmarshaling ws message:", err)
-					log.Error("VKPL-from-chat Error: ", string(p))
+					//log.Error("VKPL-from-chat Error: ", string(p))
+
+					// ----------
+					dst := &bytes.Buffer{}
+					if err := json.Indent(dst, p, "", "  "); err != nil {
+						panic(err)
+					}
+
+					fmt.Println(dst.String())
+					// ----------
 					return
 				}
 
 				if msg.Push.Pub.Data.Type == "message" {
 					from := msg.Push.Pub.Data.Data.User.DisplayName
-					var text []interface{}
+					var sb strings.Builder
+
+					//==================
+					empJSON, err := json.MarshalIndent(msg.Push.Pub.Data.Data.Data, "", "  ")
+					if err != nil {
+						log.Fatalf(err.Error())
+					}
+
+					fmt.Printf("All Data: %s\n", string(empJSON))
+					//==================
+
 					for _, d := range msg.Push.Pub.Data.Data.Data {
-						if d.Type == "text" {
-							err := json.Unmarshal([]byte(d.Content), &text)
+						var content []interface{}
+						fmt.Printf("Current Data: %+v\n", d)
+						if d.Type == "text" && d.Modificator == "" {
+							err := json.Unmarshal([]byte(d.Content), &content)
 							if err != nil {
-								log.Error("Error while unmarshaling text:", err)
-								/*if jsonErr, ok := err.(*json.SyntaxError); ok {
-									problemPart := d.Content[jsonErr.Offset-10 : jsonErr.Offset+10]
-									err = fmt.Errorf("%w ~ error near '%s' (offset %d)", err, problemPart, jsonErr.Offset)
-									log.Error(err)
-								}*/
-								log.Error("VKPL-from-chat Error: ", string(p))
+								log.Error("Error while unmarshaling content:", err)
+								// ----------
+								dst := &bytes.Buffer{}
+								if err := json.Indent(dst, p, "", "  "); err != nil {
+									panic(err)
+								}
+
+								fmt.Println(dst.String())
+								// ----------
+								//log.Error("VKPL-from-chat Error: ", string(p))
 								return
+
 							}
+							//break
+							sb.WriteString(content[0].(string))
 						}
 					}
-					if len(text) == 0 {
+
+					trimSb := strings.TrimSpace(sb.String())
+					if len(trimSb) == 0 {
 						continue
 					}
-					fmt.Printf("%s: %s\n", from, text[0].(string))
-					cmdAndParam := getCommandFromMessage(text[0].(string))
-					fmt.Printf("%s | len: %d\n", cmdAndParam, len(cmdAndParam))
-					if len(cmdAndParam) == 1 {
-						fmt.Printf("%s\n", cmdAndParam[0])
-					} else {
-						fmt.Printf("%s: %s\n", cmdAndParam[0], cmdAndParam[1])
-					}
+					/*					empJSON, err := json.MarshalIndent(msg, "", "  ")
+										if err != nil {
+											log.Fatalf(err.Error())
+										}
+										fmt.Println(string(empJSON))*/
+
+					fmt.Printf("%s: %s\n", from, trimSb)
+					cmdAndParam := getCommandFromMessage(trimSb)
+					//fmt.Printf("%s | len: %d\n", cmdAndParam, len(cmdAndParam))
+					/*					if len(cmdAndParam) == 1 {
+											fmt.Printf("%s\n", cmdAndParam[0])
+										} else {
+											fmt.Printf("%s: %s\n", cmdAndParam[0], cmdAndParam[1])
+										}*/
 					cmd := getCommandForAlias(cmdAndParam[0], msg.GetChannelName())
 					if cmd != "" {
 						fmt.Println(cmd)

@@ -20,11 +20,18 @@ type AuthResponse struct {
 
 // -----------
 type User struct {
-	Roles              []any  `json:"roles"`
+	Roles []struct {
+		ID        string `json:"id"`
+		Priority  int    `json:"priority"`
+		SmallURL  string `json:"smallUrl"`
+		LargeURL  string `json:"largeUrl"`
+		Name      string `json:"name"`
+		MediumURL string `json:"mediumUrl"`
+	} `json:"roles"`
 	ID                 int    `json:"id"`
 	IsOwner            bool   `json:"isOwner"`
 	DisplayName        string `json:"displayName"`
-	CreatedAt          int    `json:"createdAt"`
+	CreatedAt          int64  `json:"createdAt"`
 	Nick               string `json:"nick"`
 	AvatarURL          string `json:"avatarUrl"`
 	IsChannelModerator bool   `json:"isChannelModerator"`
@@ -34,7 +41,18 @@ type User struct {
 	VkplayProfileLink  string `json:"vkplayProfileLink"`
 	IsVerifiedStreamer bool   `json:"isVerifiedStreamer"`
 	NickColor          int    `json:"nickColor"`
-	Badges             []any  `json:"badges"`
+	Badges             []struct {
+		LargeURL    string `json:"largeUrl"`
+		MediumURL   string `json:"mediumUrl"`
+		IsCreated   bool   `json:"isCreated"`
+		Name        string `json:"name"`
+		SmallURL    string `json:"smallUrl"`
+		Achievement struct {
+			Type string `json:"type"`
+			Name string `json:"name"`
+		} `json:"achievement"`
+		ID string `json:"id"`
+	} `json:"badges"`
 }
 
 type ChatMsg struct {
@@ -50,7 +68,7 @@ type ChatMsg struct {
 						ID        int   `json:"id"`
 						Author    User  `json:"author"`
 						IsPrivate bool  `json:"isPrivate"`
-						CreatedAt int   `json:"createdAt"`
+						CreatedAt int64 `json:"createdAt"`
 						Data      []struct {
 							Modificator string `json:"modificator"`
 							Type        string `json:"type"`
@@ -68,8 +86,8 @@ type ChatMsg struct {
 						Content     string `json:"content,omitempty"`
 						Modificator string `json:"modificator,omitempty"`
 					} `json:"data"`
-					CreatedAt int  `json:"createdAt"`
-					IsPrivate bool `json:"isPrivate"`
+					CreatedAt int64 `json:"createdAt"`
+					IsPrivate bool  `json:"isPrivate"`
 					Flags     struct {
 						IsParentDeleted bool `json:"isParentDeleted"`
 						IsFirstMessage  bool `json:"isFirstMessage"`
