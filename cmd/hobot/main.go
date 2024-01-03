@@ -11,7 +11,6 @@ import (
 	"github.com/joho/godotenv"
 	"log"
 	"os"
-	"time"
 )
 
 func main() {
@@ -65,8 +64,4 @@ func testEnvs(enums []string) bool {
 		}
 	}
 	return successful
-}
-
-func NewContextWithTimeout() (context.Context, context.CancelFunc) {
-	return context.WithTimeout(context.Background(), 10*time.Second)
 }

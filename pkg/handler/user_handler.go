@@ -2,7 +2,7 @@ package handler
 
 import (
 	"HoBot_Backend/pkg/model"
-	userService "HoBot_Backend/pkg/service"
+	"HoBot_Backend/pkg/service"
 	"github.com/go-playground/validator/v10"
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/log"
@@ -23,7 +23,7 @@ func Register(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusBadRequest).JSON(err.Error())
 	}
 
-	res, err := userService.Registration(*user)
+	res, err := service.Registration(*user)
 	if err != nil {
 		log.Info(err)
 		return err
@@ -51,7 +51,7 @@ func Login(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusBadRequest).JSON(err.Error())
 	}
 
-	res, err := userService.Login(*user)
+	res, err := service.Login(*user)
 	if err != nil {
 		return err
 	}
@@ -72,7 +72,7 @@ func Logout(c *fiber.Ctx) error {
 		return fiber.NewError(fiber.StatusUnauthorized)
 	}
 
-	err := userService.Logout(refreshToken)
+	err := service.Logout(refreshToken)
 	if err != nil {
 		return err
 	}
@@ -86,7 +86,7 @@ func Refresh(c *fiber.Ctx) error {
 	if refreshToken == "" {
 		return fiber.NewError(fiber.StatusUnauthorized)
 	}
-	res, err := userService.RefreshToken(refreshToken)
+	res, err := service.RefreshToken(refreshToken)
 	if err != nil {
 		return err
 	}
@@ -102,8 +102,12 @@ func Refresh(c *fiber.Ctx) error {
 }
 
 func Users(c *fiber.Ctx) error {
+	name := parseUserIdFromRequest(c)
+	return c.SendString("Welcome " + name)
+}
+
+func parseUserIdFromRequest(c *fiber.Ctx) string {
 	user := c.Locals("user").(*jwt.Token)
 	claims := user.Claims.(jwt.MapClaims)
-	name := claims["id"].(string)
-	return c.SendString("Welcome " + name)
+	return claims["id"].(string)
 }

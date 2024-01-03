@@ -1,6 +1,7 @@
 package vkplay
 
 import (
+	"HoBot_Backend/pkg/model"
 	DB "HoBot_Backend/pkg/mongo"
 	"bytes"
 	"context"
@@ -9,6 +10,7 @@ import (
 	"github.com/gofiber/fiber/v2/log"
 	"github.com/gorilla/websocket"
 	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/mongo"
 	"io"
 	"net/http"
 	"net/http/cookiejar"
@@ -379,12 +381,45 @@ func getChannelsFromDB() []string {
 func getCommandsFromDB() {
 	var cmds ChannelCommands
 
-	err := DB.GetCollection(DB.Config).FindOne(ctx, bson.M{"_id": "commands"}).Decode(&cmds)
-	if err != nil {
-		log.Error("Error while getting commands:", err)
-		return
+	// Set up the aggregation pipeline
+	pipeline := mongo.Pipeline{
+		{{"$group", bson.D{
+			{"_id", nil},
+			{"channels", bson.D{{"$push", bson.D{
+				{"k", "$_id"},
+				{"v", bson.D{{"aliases", "$aliases"}}},
+			}}}},
+		}}},
+		{{"$replaceRoot", bson.D{
+			{"newRoot", bson.D{
+				{"_id", "commands"},
+				{"channels", bson.D{{"$arrayToObject", "$channels"}}},
+			}},
+		}}},
 	}
+
+	// Execute the aggregation
+	cursor, err := DB.GetCollection(DB.UserSettings).Aggregate(ctx, pipeline)
+	if err != nil {
+		log.Error("Error while aggregating:", err)
+	}
+	defer cursor.Close(ctx)
+
+	// Iterate over the result
+	if cursor.Next(ctx) {
+		err := cursor.Decode(&cmds)
+		if err != nil {
+			log.Error("Error while decoding:", err)
+		}
+	}
+
+	/*	err := DB.GetCollection(DB.Config).FindOne(ctx, bson.M{"_id": "commands"}).Decode(&cmds)
+		if err != nil {
+			log.Error("Error while getting commands:", err)
+			return
+		}*/
 	channelsCommands = cmds
+	fmt.Println(channelsCommands)
 }
 
 func saveCommandsToDB() {
@@ -451,4 +486,14 @@ func SendMessageToChannel(msgText string, channel string, mention *User) {
 		rd, _ := io.ReadAll(resp.Body)
 		log.Info(string(rd))
 	}
+}
+
+func AddCommandForUser(userId string, command *model.NewCommand) (model.CommandList, error) {
+	channelsCommands.Channels[userId].Aliases[command.Alias] = command.Command
+	_, err := DB.GetCollection(DB.UserSettings).UpdateByID(ctx, userId, bson.M{"$set": bson.M{"commands": channelsCommands.Channels[userId].Aliases}})
+	if err != nil {
+		return model.CommandList{}, err
+	}
+	return model.CommandList{}, err
+
 }

@@ -47,10 +47,9 @@ func Login(user model.User) (*model.UserData, error) {
 	if user.Login == "" || user.Password == "" {
 		return nil, fiber.NewError(fiber.StatusConflict, "login or password is empty")
 	}
-	colUser := DB.GetCollection(DB.Users)
 
 	var userDb = model.User{}
-	err := colUser.FindOne(ctx, bson.M{"login": user.Login}).Decode(&userDb)
+	err := DB.GetCollection(DB.Users).FindOne(ctx, bson.M{"login": user.Login}).Decode(&userDb)
 	if err != nil {
 		return nil, fiber.NewError(fiber.StatusUnauthorized, "login or password incorrect")
 	}
@@ -77,7 +76,6 @@ func Logout(refreshToken string) error {
 }
 
 func RefreshToken(refreshToken string) (*model.UserData, error) {
-	colUser := DB.GetCollection(DB.Users)
 	userFromToken, err := validateRefreshToken(refreshToken)
 	if err != nil {
 		return nil, err
@@ -89,7 +87,7 @@ func RefreshToken(refreshToken string) (*model.UserData, error) {
 	}
 
 	var userDb model.User
-	err = colUser.FindOne(ctx, bson.M{"_id": userFromToken.Id}).Decode(&userDb)
+	err = DB.GetCollection(DB.Users).FindOne(ctx, bson.M{"_id": userFromToken.Id}).Decode(&userDb)
 	if err != nil {
 		return nil, err
 	}

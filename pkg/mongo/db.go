@@ -11,10 +11,12 @@ import (
 type CollectionName string
 
 const (
-	Users  CollectionName = "Users"
-	Tokens CollectionName = "Tokens"
-	Vkpl   CollectionName = "Vkpl"
-	Config CollectionName = "Config"
+	Users           CollectionName = "Users"
+	Tokens          CollectionName = "Tokens"
+	Vkpl            CollectionName = "Vkpl"
+	Config          CollectionName = "Config"
+	SettingsOptions CollectionName = "SettingsOptions"
+	UserSettings    CollectionName = "UserSettings"
 )
 
 var ctx = context.TODO()
