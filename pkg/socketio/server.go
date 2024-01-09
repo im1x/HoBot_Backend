@@ -52,7 +52,9 @@ func Start() {
 			next(socket.NewExtendedError("Unauthorized: invalid token", "401"))
 			return
 		}
-		s.Join(socket.Room(userDto.Id.Hex()))
+		// --- TEMP ---
+		s.Join(socket.Room(userDto.Id))
+		//s.Join(socket.Room(userDto.Id.Hex()))
 		fmt.Printf("Rooms: %v\n", s.Rooms())
 
 		next(nil)

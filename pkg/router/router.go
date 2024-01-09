@@ -21,6 +21,7 @@ func Register(app *fiber.App) {
 	api.Get("/users", handler.Users)
 
 	settings := api.Group("/settings")
+	settings.Get("/getcommands", handler.GetCommands)
 	settings.Get("/getcommandslist", handler.GetCommandsList)
 	settings.Post("/addcommand", handler.AddCommandAndAlias)
 }

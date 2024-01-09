@@ -3,19 +3,34 @@ package service
 import (
 	"HoBot_Backend/pkg/model"
 	DB "HoBot_Backend/pkg/mongo"
+	"HoBot_Backend/pkg/service/vkplay"
+	"context"
 	"fmt"
+	"github.com/gofiber/fiber/v2/log"
 	"go.mongodb.org/mongo-driver/bson"
 	"sync"
+	"time"
 )
 
+func GetCommands(ctx context.Context, userId string) ([]model.CommonCommand, error) {
+	cmdAndDescriptions, err := getCommandsWithDescription(ctx, userId)
+	if err != nil {
+		return nil, err
+	}
+	return cmdAndDescriptions, nil
+}
+
 func GetCommandsList() (*model.CommandList, error) {
+	ctx, cancel := context.WithTimeout(ctxParent, 3*time.Second)
+	defer cancel()
+
 	var (
 		commandsListResult model.CommandList
-		aliasesResult      model.CommandsAliases
+		descriptionResult  model.CommandsDescription
 		errResult          error
 	)
 	commandsListCh := make(chan model.CommandList)
-	aliasesCh := make(chan model.CommandsAliases)
+	descriptionCh := make(chan model.CommandsDescription)
 	errCh := make(chan error)
 
 	var wg sync.WaitGroup
@@ -33,21 +48,20 @@ func GetCommandsList() (*model.CommandList, error) {
 		commandsListCh <- commandsList
 	}()
 
-	// get commandsAliases
+	// get commandDescription
 	go func() {
 		defer wg.Done()
-		var commandsAliases model.CommandsAliases
-		err := DB.GetCollection(DB.SettingsOptions).FindOne(ctx, bson.M{"_id": "commandsAliases"}).Decode(&commandsAliases)
+		commandsDescription, err := getCommandDescription(ctx)
 		if err != nil {
 			errCh <- err
 			return
 		}
-		aliasesCh <- commandsAliases
+		descriptionCh <- commandsDescription
 	}()
 	go func() {
 		wg.Wait()
 		close(commandsListCh)
-		close(aliasesCh)
+		close(descriptionCh)
 		close(errCh)
 	}()
 
@@ -60,12 +74,12 @@ func GetCommandsList() (*model.CommandList, error) {
 				fmt.Println("Received commandsList:", commandsList)
 				commandsListResult = commandsList
 			}
-		case aliases, ok := <-aliasesCh:
+		case descriptions, ok := <-descriptionCh:
 			if !ok {
-				aliasesCh = nil
+				descriptionCh = nil
 			} else {
-				fmt.Println("Received aliases:", aliases)
-				aliasesResult = aliases
+				fmt.Println("Received descriptions:", descriptions)
+				descriptionResult = descriptions
 			}
 		case err, ok := <-errCh:
 			if !ok {
@@ -77,36 +91,71 @@ func GetCommandsList() (*model.CommandList, error) {
 		}
 
 		// Exit the loop when all channels are closed
-		if commandsListCh == nil && aliasesCh == nil && errCh == nil {
+		if commandsListCh == nil && descriptionCh == nil && errCh == nil {
 			break
 		}
 	}
 	fmt.Println("All Queries Completed")
-	fmt.Println("Result:", commandsListResult, aliasesResult, errResult)
+	fmt.Println("Result:", commandsListResult, descriptionResult, errResult)
 	if errResult != nil {
 		return nil, errResult
 	}
-	addDescriptionToCommands(&commandsListResult, aliasesResult)
+	addDescriptionToCommands(&commandsListResult, descriptionResult)
 	return &commandsListResult, nil
-	/*var commandsList model.CommandList
-	err := DB.GetCollection(DB.SettingsOptions).FindOne(ctx, bson.M{"_id": "commandsList"}).Decode(&commandsList)
+}
+
+func getCommandDescription(ctx context.Context) (model.CommandsDescription, error) {
+	var commandsDescription model.CommandsDescription
+	err := DB.GetCollection(DB.SettingsOptions).FindOne(ctx, bson.M{"_id": "commandsDescription"}).Decode(&commandsDescription)
+	if err != nil {
+		fmt.Println(err)
+		return model.CommandsDescription{}, err
+	}
+	return commandsDescription, nil
+}
+
+func AddCommandForUser(ctx context.Context, userId string, command *model.CommonCommand) ([]model.CommonCommand, error) {
+	vkplay.ChannelsCommands.Channels[userId].Aliases[command.Alias] = vkplay.CmdDetails{
+		Command:     command.Command,
+		AccessLevel: command.AccessLevel,
+	}
+	fmt.Println(vkplay.ChannelsCommands.Channels[userId].Aliases)
+	fmt.Println(ctx)
+	_, err := DB.GetCollection(DB.UserSettings).UpdateByID(ctx, userId, bson.M{"$set": bson.M{"aliases": vkplay.ChannelsCommands.Channels[userId].Aliases}})
+	if err != nil {
+		log.Error("Error while updating aliases:", err)
+		return nil, err
+	}
+
+	cmds, err := getCommandsWithDescription(ctx, userId)
 	if err != nil {
 		return nil, err
 	}
-	return &commandsList, nil*/
+
+	return cmds, nil
 }
 
-/*func AddCommand(userId string, command *model.NewCommand) (model.CommandList, error) {
-	if chnl, ok := channelsCommands.Channels[channel]; ok {
-
+func getCommandsWithDescription(ctx context.Context, userId string) ([]model.CommonCommand, error) {
+	var cmds []model.CommonCommand
+	commandDescription, err := getCommandDescription(ctx)
+	if err != nil {
+		log.Error("Error while getting command description:", err)
+		return nil, err
 	}
-	return model.CommandList{}, nil
-}*/
+	for item := range vkplay.ChannelsCommands.Channels[userId].Aliases {
+		cmds = append(cmds, model.CommonCommand{
+			Alias:       item,
+			Command:     vkplay.ChannelsCommands.Channels[userId].Aliases[item].Command,
+			Description: commandDescription.CommandsDescription[vkplay.ChannelsCommands.Channels[userId].Aliases[item].Command],
+		})
+	}
+	return cmds, nil
+}
 
-func addDescriptionToCommands(cmdList *model.CommandList, aliases model.CommandsAliases) {
+func addDescriptionToCommands(cmdList *model.CommandList, descriptions model.CommandsDescription) {
 	for cmd := range cmdList.Commands {
 		for item := range cmdList.Commands[cmd].Items {
-			cmdList.Commands[cmd].Items[item].Label = aliases.CommandsAliases[cmdList.Commands[cmd].Items[item].Value]
+			cmdList.Commands[cmd].Items[item].Label = descriptions.CommandsDescription[cmdList.Commands[cmd].Items[item].Value]
 		}
 	}
 }

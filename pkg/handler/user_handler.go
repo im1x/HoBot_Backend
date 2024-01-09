@@ -23,7 +23,7 @@ func Register(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusBadRequest).JSON(err.Error())
 	}
 
-	res, err := service.Registration(*user)
+	res, err := service.Registration(c.Context(), *user)
 	if err != nil {
 		log.Info(err)
 		return err
@@ -51,7 +51,7 @@ func Login(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusBadRequest).JSON(err.Error())
 	}
 
-	res, err := service.Login(*user)
+	res, err := service.Login(c.Context(), *user)
 	if err != nil {
 		return err
 	}
@@ -72,7 +72,7 @@ func Logout(c *fiber.Ctx) error {
 		return fiber.NewError(fiber.StatusUnauthorized)
 	}
 
-	err := service.Logout(refreshToken)
+	err := service.Logout(c.Context(), refreshToken)
 	if err != nil {
 		return err
 	}
@@ -86,7 +86,7 @@ func Refresh(c *fiber.Ctx) error {
 	if refreshToken == "" {
 		return fiber.NewError(fiber.StatusUnauthorized)
 	}
-	res, err := service.RefreshToken(refreshToken)
+	res, err := service.RefreshToken(c.Context(), refreshToken)
 	if err != nil {
 		return err
 	}

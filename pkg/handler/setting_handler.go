@@ -3,12 +3,19 @@ package handler
 import (
 	"HoBot_Backend/pkg/model"
 	"HoBot_Backend/pkg/service"
-	"HoBot_Backend/pkg/service/vkplay"
 	"fmt"
 	"github.com/gofiber/fiber/v2"
 	"time"
 )
 
+func GetCommands(c *fiber.Ctx) error {
+	userId := parseUserIdFromRequest(c)
+	commands, err := service.GetCommands(c.Context(), userId)
+	if err != nil {
+		return fiber.NewError(fiber.StatusInternalServerError, err.Error())
+	}
+	return c.JSON(commands)
+}
 func GetCommandsList(c *fiber.Ctx) error {
 	// Record start time
 	startTime := time.Now()
@@ -28,7 +35,7 @@ func GetCommandsList(c *fiber.Ctx) error {
 }
 
 func AddCommandAndAlias(c *fiber.Ctx) error {
-	newCommand := new(model.NewCommand)
+	newCommand := new(model.CommonCommand)
 
 	if err := c.BodyParser(&newCommand); err != nil {
 		return fiber.NewError(fiber.StatusBadRequest, err.Error())
@@ -41,7 +48,7 @@ func AddCommandAndAlias(c *fiber.Ctx) error {
 
 	fmt.Println("userId: ", userId)
 
-	commandList, err := vkplay.AddCommandForUser(userId, newCommand)
+	commandList, err := service.AddCommandForUser(c.Context(), userId, newCommand)
 	if err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(err.Error())
 	}

@@ -23,9 +23,9 @@ func getCommandFromMessage(message string) []string {
 		return commandAndParam[:1]
 	}
 }
-func getCommandForAlias(command, channel string) (cmd string) {
-	if chnl, ok := channelsCommands.Channels[channel]; ok {
-		cmd = chnl.Aliases[command]
+func getCommandForAlias(alias, channel string) (cmd string) {
+	if chnl, ok := ChannelsCommands.Channels[channel]; ok {
+		cmd = chnl.Aliases[alias].Command
 	}
 	return
 }

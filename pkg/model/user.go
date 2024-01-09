@@ -2,15 +2,14 @@ package model
 
 import (
 	"github.com/golang-jwt/jwt/v5"
-	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
 type User struct {
-	Id          primitive.ObjectID `bson:"_id,omitempty" json:"id,omitempty"`
-	Login       string             `bson:"login,omitempty" json:"login,omitempty" validate:"required"`
-	Password    string             `bson:"password,omitempty" json:"password,omitempty" validate:"required,gte=8"`
-	Channel     string             `bson:"channel,omitempty" json:"channel,omitempty"`
-	IsConfirmed bool               `bson:"confirmed,omitempty" json:"confirmed,omitempty"`
+	Id          string `bson:"_id,omitempty" json:"id,omitempty"`
+	Login       string `bson:"login,omitempty" json:"login,omitempty" validate:"required"`
+	Password    string `bson:"password,omitempty" json:"password,omitempty" validate:"required,gte=8"`
+	Channel     string `bson:"channel,omitempty" json:"channel,omitempty"`
+	IsConfirmed bool   `bson:"confirmed,omitempty" json:"confirmed,omitempty"`
 }
 
 func (u User) ToUserDto() UserDto {
@@ -22,9 +21,9 @@ func (u User) ToUserDto() UserDto {
 }
 
 type UserDto struct {
-	Id          primitive.ObjectID `json:"id,omitempty"`
-	Login       string             `json:"login,omitempty"`
-	IsConfirmed bool               `json:"confirmed"`
+	Id          string `json:"id,omitempty"`
+	Login       string `json:"login,omitempty"`
+	IsConfirmed bool   `json:"confirmed"`
 	jwt.RegisteredClaims
 }
 

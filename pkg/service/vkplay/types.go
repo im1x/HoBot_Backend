@@ -143,7 +143,12 @@ type ChannelCommands struct {
 }
 
 type ChCommand struct {
-	Aliases map[string]string `bson:"aliases"`
+	Aliases map[string]CmdDetails `bson:"aliases"`
+}
+
+type CmdDetails struct {
+	Command     string `bson:"command"`
+	AccessLevel int    `bson:"access_level"`
 }
 
 // -----------

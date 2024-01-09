@@ -7,14 +7,13 @@ import (
 	"errors"
 	"github.com/gofiber/fiber/v2"
 	"go.mongodb.org/mongo-driver/bson"
-	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
 	"golang.org/x/crypto/bcrypt"
 )
 
-var ctx = context.TODO()
+var ctxParent = context.Background()
 
-func Registration(user model.User) (*model.UserData, error) {
+func Registration(ctx context.Context, user model.User) (*model.UserData, error) {
 	if user.Login == "" || user.Password == "" {
 		return nil, fiber.NewError(fiber.StatusConflict, "login or password is empty")
 	}
@@ -28,12 +27,16 @@ func Registration(user model.User) (*model.UserData, error) {
 	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(user.Password+user.Login), bcrypt.DefaultCost)
 	user.Password = string(hashedPassword)
 
+	// --- TEMP ---
+	user.Id = "18591758"
 	res, err := colUser.InsertOne(ctx, user)
 	userDto := user.ToUserDto()
-	userDto.Id = res.InsertedID.(primitive.ObjectID)
+	// --- TEMP ---
+	userDto.Id = res.InsertedID.(string)
+	//userDto.Id = res.InsertedID.(primitive.ObjectID)
 
 	accessToken, refreshToken := GenerateTokens(userDto)
-	err = saveToken(res.InsertedID, refreshToken)
+	err = saveToken(ctx, res.InsertedID, refreshToken)
 	if err != nil {
 		return nil, err
 	}
@@ -43,7 +46,7 @@ func Registration(user model.User) (*model.UserData, error) {
 	return &resData, err
 }
 
-func Login(user model.User) (*model.UserData, error) {
+func Login(ctx context.Context, user model.User) (*model.UserData, error) {
 	if user.Login == "" || user.Password == "" {
 		return nil, fiber.NewError(fiber.StatusConflict, "login or password is empty")
 	}
@@ -61,7 +64,7 @@ func Login(user model.User) (*model.UserData, error) {
 	userDto := userDb.ToUserDto()
 
 	accessToken, refreshToken := GenerateTokens(userDto)
-	err = saveToken(userDb.Id, refreshToken)
+	err = saveToken(ctx, userDb.Id, refreshToken)
 	if err != nil {
 		return nil, err
 	}
@@ -71,17 +74,17 @@ func Login(user model.User) (*model.UserData, error) {
 	return &resData, err
 }
 
-func Logout(refreshToken string) error {
-	return removeToken(refreshToken)
+func Logout(ctx context.Context, refreshToken string) error {
+	return removeToken(ctx, refreshToken)
 }
 
-func RefreshToken(refreshToken string) (*model.UserData, error) {
+func RefreshToken(ctx context.Context, refreshToken string) (*model.UserData, error) {
 	userFromToken, err := validateRefreshToken(refreshToken)
 	if err != nil {
 		return nil, err
 	}
 
-	token, _ := findToken(refreshToken)
+	token, _ := findToken(ctx, refreshToken)
 	if err != nil || token == nil {
 		return nil, fiber.NewError(fiber.StatusUnauthorized)
 	}
@@ -95,7 +98,7 @@ func RefreshToken(refreshToken string) (*model.UserData, error) {
 	userDto := userDb.ToUserDto()
 
 	accessToken, refreshToken := GenerateTokens(userDto)
-	err = saveToken(userDto.Id, refreshToken)
+	err = saveToken(ctx, userDto.Id, refreshToken)
 	if err != nil {
 		return nil, err
 	}

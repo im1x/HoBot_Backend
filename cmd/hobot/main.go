@@ -34,7 +34,7 @@ func main() {
 	mongo.Connect()
 
 	ctx := context.Background()
-	vkplay.ConnectWS(ctx)
+	vkplay.Start(ctx)
 
 	//Http server
 	app := fiber.New()

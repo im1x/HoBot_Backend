@@ -11,12 +11,14 @@ type CommandList struct {
 	} `json:"commands"`
 }
 
-type CommandsAliases struct {
-	ID              string            `json:"_id"`
-	CommandsAliases map[string]string `bson:"commandsAliases" json:"commandsAliases"`
+type CommandsDescription struct {
+	ID                  string            `json:"_id"`
+	CommandsDescription map[string]string `bson:"commandsDescription" json:"commandsDescription"`
 }
 
-type NewCommand struct {
-	Command string `json:"command" validate:"required,gte=3"`
-	Alias   string `json:"alias" validate:"required,gte=3"`
+type CommonCommand struct {
+	Command     string `json:"command" validate:"required,gte=3"`
+	Alias       string `json:"alias" validate:"required,gte=3"`
+	AccessLevel int    `json:"access_level"`
+	Description string `json:"description"`
 }

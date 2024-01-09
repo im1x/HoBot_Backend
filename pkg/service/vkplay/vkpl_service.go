@@ -1,7 +1,6 @@
 package vkplay
 
 import (
-	"HoBot_Backend/pkg/model"
 	DB "HoBot_Backend/pkg/mongo"
 	"bytes"
 	"context"
@@ -23,11 +22,20 @@ import (
 var (
 	vkpl             Vkpl
 	authVkpl         AuthResponse
-	ctx              context.Context
-	channelsCommands = ChannelCommands{
+	ctxParent        context.Context
+	ChannelsCommands = ChannelCommands{
 		Channels: make(map[string]ChCommand),
 	}
 )
+
+func Start(ctx context.Context) {
+	ctxParent = ctx
+	err := connectWS()
+	if err != nil {
+		log.Error(err)
+	}
+
+}
 
 func refreshVkplToken() error {
 	log.Info("VKPL: Refreshing vkplay token")
@@ -92,6 +100,8 @@ func refreshVkplToken() error {
 
 func saveVkplAuthToDB(auth AuthResponse) error {
 	log.Info("VKPL: Saving vkplay auth")
+	ctx, cancel := context.WithTimeout(ctxParent, 3*time.Second)
+	defer cancel()
 	_, err := DB.GetCollection(DB.Vkpl).ReplaceOne(ctx, bson.M{"_id": "auth"}, auth)
 	if err != nil {
 		log.Error("Error while inserting vkplay auth:", err)
@@ -102,6 +112,8 @@ func saveVkplAuthToDB(auth AuthResponse) error {
 
 func getVkplAuthFromDB() (AuthResponse, error) {
 	log.Info("VKPL: Getting vkplay auth from db")
+	ctx, cancel := context.WithTimeout(ctxParent, 3*time.Second)
+	defer cancel()
 	var auth AuthResponse
 	err := DB.GetCollection(DB.Vkpl).FindOne(ctx, bson.M{"_id": "auth"}).Decode(&auth)
 	if err != nil {
@@ -179,11 +191,7 @@ func getWsToken() string {
 	return token["token"].(string)
 }
 
-func ConnectWS(ctxParent context.Context) error {
-	ctxWithTimeout, cancel := context.WithTimeout(ctxParent, 10*time.Second)
-	ctx = ctxWithTimeout
-	defer cancel()
-
+func connectWS() error {
 	wsToken := getWsToken()
 	if wsToken == "" {
 		return fmt.Errorf("ws token is empty")
@@ -223,8 +231,7 @@ func ConnectWS(ctxParent context.Context) error {
 		return err
 	}
 	getCommandsFromDB()
-	listen()
-
+	go listen()
 	return nil
 }
 
@@ -257,7 +264,7 @@ func joinChat(channel string) error {
 }
 
 func joinAllChats() error {
-	channels := getChannelsFromDB()
+	channels := getWsChannelsFromDB()
 
 	for _, channel := range channels {
 		err := joinChat(channel)
@@ -270,105 +277,102 @@ func joinAllChats() error {
 }
 
 func listen() {
-	go func() {
-		for {
-			p, err := ReadWSMessage()
+	for {
+		p, err := ReadWSMessage()
+		if err != nil {
+			log.Error("Error while reading ws message:", err)
+			return
+		}
+		//log.Info("VKPL-from-chat: ", string(p))
+		if isPING(p) {
+			SendWSMessage([]byte("{}"))
+		} else {
+			var msg ChatMsg
+			err = json.Unmarshal(p, &msg)
 			if err != nil {
-				log.Error("Error while reading ws message:", err)
+				log.Error("Error while unmarshalling ws message:", err)
+				//log.Error("VKPL-from-chat Error: ", string(p))
+
+				// ----------
+				dst := &bytes.Buffer{}
+				if err := json.Indent(dst, p, "", "  "); err != nil {
+					panic(err)
+				}
+
+				fmt.Println(dst.String())
+				// ----------
 				return
 			}
-			//log.Info("VKPL-from-chat: ", string(p))
-			if isPING(p) {
-				SendWSMessage([]byte("{}"))
-			} else {
-				var msg ChatMsg
-				err = json.Unmarshal(p, &msg)
+
+			if msg.Push.Pub.Data.Type == "message" {
+				from := msg.Push.Pub.Data.Data.User.DisplayName
+				var sb strings.Builder
+
+				//==================
+				empJSON, err := json.MarshalIndent(msg.Push.Pub.Data.Data.Data, "", "  ")
 				if err != nil {
-					log.Error("Error while unmarshaling ws message:", err)
-					//log.Error("VKPL-from-chat Error: ", string(p))
-
-					// ----------
-					dst := &bytes.Buffer{}
-					if err := json.Indent(dst, p, "", "  "); err != nil {
-						panic(err)
-					}
-
-					fmt.Println(dst.String())
-					// ----------
-					return
+					log.Fatalf(err.Error())
 				}
 
-				if msg.Push.Pub.Data.Type == "message" {
-					from := msg.Push.Pub.Data.Data.User.DisplayName
-					var sb strings.Builder
+				fmt.Printf("All Data: %s\n", string(empJSON))
+				//==================
 
-					//==================
-					empJSON, err := json.MarshalIndent(msg.Push.Pub.Data.Data.Data, "", "  ")
-					if err != nil {
-						log.Fatalf(err.Error())
-					}
-
-					fmt.Printf("All Data: %s\n", string(empJSON))
-					//==================
-
-					for _, d := range msg.Push.Pub.Data.Data.Data {
-						var content []interface{}
-						fmt.Printf("Current Data: %+v\n", d)
-						if d.Type == "text" && d.Modificator == "" {
-							err := json.Unmarshal([]byte(d.Content), &content)
-							if err != nil {
-								log.Error("Error while unmarshaling content:", err)
-								// ----------
-								dst := &bytes.Buffer{}
-								if err := json.Indent(dst, p, "", "  "); err != nil {
-									panic(err)
-								}
-
-								fmt.Println(dst.String())
-								// ----------
-								//log.Error("VKPL-from-chat Error: ", string(p))
-								return
-
+				for _, d := range msg.Push.Pub.Data.Data.Data {
+					var content []interface{}
+					fmt.Printf("Current Data: %+v\n", d)
+					if d.Type == "text" && d.Modificator == "" {
+						err := json.Unmarshal([]byte(d.Content), &content)
+						if err != nil {
+							log.Error("Error while unmarshalling content:", err)
+							// ----------
+							dst := &bytes.Buffer{}
+							if err := json.Indent(dst, p, "", "  "); err != nil {
+								panic(err)
 							}
-							//break
-							sb.WriteString(content[0].(string))
+
+							fmt.Println(dst.String())
+							// ----------
+							//log.Error("VKPL-from-chat Error: ", string(p))
+							return
+
 						}
+						//break
+						sb.WriteString(content[0].(string))
 					}
-
-					trimSb := strings.TrimSpace(sb.String())
-					if len(trimSb) == 0 {
-						continue
-					}
-					/*					empJSON, err := json.MarshalIndent(msg, "", "  ")
-										if err != nil {
-											log.Fatalf(err.Error())
-										}
-										fmt.Println(string(empJSON))*/
-
-					fmt.Printf("%s: %s\n", from, trimSb)
-					cmdAndParam := getCommandFromMessage(trimSb)
-					//fmt.Printf("%s | len: %d\n", cmdAndParam, len(cmdAndParam))
-					/*					if len(cmdAndParam) == 1 {
-											fmt.Printf("%s\n", cmdAndParam[0])
-										} else {
-											fmt.Printf("%s: %s\n", cmdAndParam[0], cmdAndParam[1])
-										}*/
-					cmd := getCommandForAlias(cmdAndParam[0], msg.GetChannelName())
-					if cmd != "" {
-						fmt.Println(cmd)
-						Commands[cmd].Handler(&msg)
-					}
-
 				}
 
+				trimSb := strings.TrimSpace(sb.String())
+				if len(trimSb) == 0 {
+					continue
+				}
+				/*					empJSON, err := json.MarshalIndent(msg, "", "  ")
+									if err != nil {
+										log.Fatalf(err.Error())
+									}
+									fmt.Println(string(empJSON))*/
+
+				fmt.Printf("%s: %s\n", from, trimSb)
+				cmdAndParam := getCommandFromMessage(trimSb)
+				//fmt.Printf("%s | len: %d\n", cmdAndParam, len(cmdAndParam))
+				/*					if len(cmdAndParam) == 1 {
+										fmt.Printf("%s\n", cmdAndParam[0])
+									} else {
+										fmt.Printf("%s: %s\n", cmdAndParam[0], cmdAndParam[1])
+									}*/
+				cmd := getCommandForAlias(cmdAndParam[0], msg.GetChannelName())
+				if cmd != "" {
+					fmt.Println(cmd)
+					Commands[cmd].Handler(&msg)
+				}
 			}
 		}
-
-	}()
+	}
 }
 
-func getChannelsFromDB() []string {
+func getWsChannelsFromDB() []string {
 	var config Config
+	ctx, cancel := context.WithTimeout(ctxParent, 3*time.Second)
+	defer cancel()
 
 	err := DB.GetCollection(DB.Config).FindOne(ctx, bson.M{"_id": "ws"}).Decode(&config)
 	if err != nil {
@@ -380,6 +384,8 @@ func getChannelsFromDB() []string {
 
 func getCommandsFromDB() {
 	var cmds ChannelCommands
+	ctx, cancel := context.WithTimeout(ctxParent, 5*time.Second)
+	defer cancel()
 
 	// Set up the aggregation pipeline
 	pipeline := mongo.Pipeline{
@@ -413,20 +419,9 @@ func getCommandsFromDB() {
 		}
 	}
 
-	/*	err := DB.GetCollection(DB.Config).FindOne(ctx, bson.M{"_id": "commands"}).Decode(&cmds)
-		if err != nil {
-			log.Error("Error while getting commands:", err)
-			return
-		}*/
-	channelsCommands = cmds
-	fmt.Println(channelsCommands)
-}
-
-func saveCommandsToDB() {
-	_, err := DB.GetCollection(DB.Config).ReplaceOne(ctx, bson.M{"_id": "commands"}, channelsCommands)
-	if err != nil {
-		log.Error("Error while saving commands:", err)
-	}
+	//ChannelsCommands = cmds
+	ChannelsCommands = cmds
+	fmt.Println(ChannelsCommands)
 }
 
 func SendMessageToChannel(msgText string, channel string, mention *User) {
@@ -486,14 +481,4 @@ func SendMessageToChannel(msgText string, channel string, mention *User) {
 		rd, _ := io.ReadAll(resp.Body)
 		log.Info(string(rd))
 	}
-}
-
-func AddCommandForUser(userId string, command *model.NewCommand) (model.CommandList, error) {
-	channelsCommands.Channels[userId].Aliases[command.Alias] = command.Command
-	_, err := DB.GetCollection(DB.UserSettings).UpdateByID(ctx, userId, bson.M{"$set": bson.M{"commands": channelsCommands.Channels[userId].Aliases}})
-	if err != nil {
-		return model.CommandList{}, err
-	}
-	return model.CommandList{}, err
-
 }
