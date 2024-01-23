@@ -135,6 +135,40 @@ func AddCommandForUser(ctx context.Context, userId string, command *model.Common
 	return cmds, nil
 }
 
+func EditCommandForUser(ctx context.Context, userId string, alias string, command *model.CommonCommand) ([]model.CommonCommand, error) {
+	delete(vkplay.ChannelsCommands.Channels[userId].Aliases, alias)
+	vkplay.ChannelsCommands.Channels[userId].Aliases[command.Alias] = vkplay.CmdDetails{
+		Command:     command.Command,
+		AccessLevel: command.AccessLevel,
+	}
+	_, err := DB.GetCollection(DB.UserSettings).UpdateByID(ctx, userId, bson.M{"$set": bson.M{"aliases": vkplay.ChannelsCommands.Channels[userId].Aliases}})
+	if err != nil {
+		log.Error("Error while updating aliases:", err)
+		return nil, err
+	}
+	cmds, err := getCommandsWithDescription(ctx, userId)
+	if err != nil {
+		return nil, err
+	}
+
+	return cmds, nil
+}
+
+func DeleteCommandForUser(ctx context.Context, userId string, alias string) ([]model.CommonCommand, error) {
+	delete(vkplay.ChannelsCommands.Channels[userId].Aliases, alias)
+	_, err := DB.GetCollection(DB.UserSettings).UpdateByID(ctx, userId, bson.M{"$set": bson.M{"aliases": vkplay.ChannelsCommands.Channels[userId].Aliases}})
+	if err != nil {
+		log.Error("Error while delete aliases:", err)
+		return nil, err
+	}
+	cmds, err := getCommandsWithDescription(ctx, userId)
+	if err != nil {
+		return nil, err
+	}
+
+	return cmds, nil
+}
+
 func getCommandsWithDescription(ctx context.Context, userId string) ([]model.CommonCommand, error) {
 	var cmds []model.CommonCommand
 	commandDescription, err := getCommandDescription(ctx)
@@ -147,6 +181,7 @@ func getCommandsWithDescription(ctx context.Context, userId string) ([]model.Com
 			Alias:       item,
 			Command:     vkplay.ChannelsCommands.Channels[userId].Aliases[item].Command,
 			Description: commandDescription.CommandsDescription[vkplay.ChannelsCommands.Channels[userId].Aliases[item].Command],
+			AccessLevel: vkplay.ChannelsCommands.Channels[userId].Aliases[item].AccessLevel,
 		})
 	}
 	return cmds, nil

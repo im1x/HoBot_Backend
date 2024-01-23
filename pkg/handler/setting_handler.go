@@ -5,6 +5,7 @@ import (
 	"HoBot_Backend/pkg/service"
 	"fmt"
 	"github.com/gofiber/fiber/v2"
+	"net/url"
 	"time"
 )
 
@@ -16,7 +17,7 @@ func GetCommands(c *fiber.Ctx) error {
 	}
 	return c.JSON(commands)
 }
-func GetCommandsList(c *fiber.Ctx) error {
+func GetCommandsDropdown(c *fiber.Ctx) error {
 	// Record start time
 	startTime := time.Now()
 
@@ -52,5 +53,45 @@ func AddCommandAndAlias(c *fiber.Ctx) error {
 	if err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(err.Error())
 	}
-	return c.JSON(commandList)
+	return c.Status(fiber.StatusCreated).JSON(commandList)
+}
+
+func EditCommand(c *fiber.Ctx) error {
+	editCommand := new(model.CommonCommand)
+
+	if err := c.BodyParser(&editCommand); err != nil {
+		return fiber.NewError(fiber.StatusBadRequest, err.Error())
+	}
+
+	if err := validate.Struct(editCommand); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(err.Error())
+	}
+
+	alias, err := url.QueryUnescape(c.Params("alias"))
+	if alias == "" || err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON("Alias is empty")
+	}
+
+	userId := parseUserIdFromRequest(c)
+	commands, err := service.EditCommandForUser(c.Context(), userId, alias, editCommand)
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(err.Error())
+	}
+
+	return c.Status(fiber.StatusOK).JSON(commands)
+}
+
+func DeleteCommand(c *fiber.Ctx) error {
+	alias, err := url.QueryUnescape(c.Params("alias"))
+	if alias == "" || err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON("Alias is empty")
+	}
+
+	userId := parseUserIdFromRequest(c)
+	commands, err := service.DeleteCommandForUser(c.Context(), userId, alias)
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(err.Error())
+	}
+
+	return c.Status(fiber.StatusOK).JSON(commands)
 }
