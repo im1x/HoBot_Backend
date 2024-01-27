@@ -16,12 +16,12 @@ func getCommandFromMessage(message string) []string {
 		return nil
 	}
 	//commandAndParam := strings.Fields(strings.ToLower(message))
-	commandAndParam := strings.SplitN(strings.ToLower(message), " ", 3)
-	if len(commandAndParam) > 1 {
-		return commandAndParam[:2]
-	} else {
-		return commandAndParam[:1]
+
+	commandAndParam := strings.SplitN(strings.ReplaceAll(message, "\u00a0", " "), " ", 3)
+	if len(commandAndParam) < 2 {
+		commandAndParam = append(commandAndParam, "")
 	}
+	return commandAndParam[:2]
 }
 func getCommandForAlias(alias, channel string) (cmd string) {
 	if chnl, ok := ChannelsCommands.Channels[channel]; ok {

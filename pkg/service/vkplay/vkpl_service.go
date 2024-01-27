@@ -360,9 +360,10 @@ func listen() {
 										fmt.Printf("%s: %s\n", cmdAndParam[0], cmdAndParam[1])
 									}*/
 				cmd := getCommandForAlias(cmdAndParam[0], msg.GetChannelName())
+				fmt.Printf("DEBUG: %s|%s|%s\n", cmd, cmdAndParam[0], cmdAndParam[1])
 				if cmd != "" {
 					fmt.Println(cmd)
-					Commands[cmd].Handler(&msg)
+					Commands[cmd].Handler(&msg, cmdAndParam[1])
 				}
 			}
 		}
