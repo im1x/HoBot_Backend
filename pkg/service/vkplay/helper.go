@@ -15,9 +15,7 @@ func getCommandFromMessage(message string) []string {
 	if message == "" {
 		return nil
 	}
-	//commandAndParam := strings.Fields(strings.ToLower(message))
-
-	commandAndParam := strings.SplitN(strings.ReplaceAll(message, "\u00a0", " "), " ", 3)
+	commandAndParam := strings.Fields(strings.ReplaceAll(message, "\u00a0", " "))
 	if len(commandAndParam) < 2 {
 		commandAndParam = append(commandAndParam, "")
 	}

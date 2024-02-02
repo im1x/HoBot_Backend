@@ -17,6 +17,7 @@ const (
 	Config          CollectionName = "Config"
 	SettingsOptions CollectionName = "SettingsOptions"
 	UserSettings    CollectionName = "UserSettings"
+	SongRequests    CollectionName = "SongRequests"
 )
 
 var ctx = context.TODO()

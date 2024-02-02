@@ -76,11 +76,15 @@ type ChatMsg struct {
 						} `json:"data"`
 					} `json:"parent"`
 					Data []struct {
-						MediumURL  string `json:"mediumUrl,omitempty"`
-						Name       string `json:"name,omitempty"`
-						SmallURL   string `json:"smallUrl,omitempty"`
-						IsAnimated bool   `json:"isAnimated,omitempty"`
-						LargeURL   string `json:"largeUrl,omitempty"`
+						Name        string `json:"name,omitempty"`
+						DisplayName string `json:"displayName,omitempty"`
+						Nick        string `json:"nick,omitempty"`
+						NickColor   string `json:"nickColor,omitempty"`
+						BlogURL     string `json:"blogUrl,omitempty"`
+						SmallURL    string `json:"smallUrl,omitempty"`
+						MediumURL   string `json:"mediumUrl,omitempty"`
+						LargeURL    string `json:"largeUrl,omitempty"`
+						IsAnimated  bool   `json:"isAnimated,omitempty"`
 						//ID          string `json:"id,omitempty"`
 						Type        string `json:"type"`
 						Content     string `json:"content,omitempty"`
@@ -92,9 +96,9 @@ type ChatMsg struct {
 						IsParentDeleted bool `json:"isParentDeleted"`
 						IsFirstMessage  bool `json:"isFirstMessage"`
 					} `json:"flags"`
-					ThreadID string `json:"threadId"`
-					Author   User   `json:"author"`
-					ID       int    `json:"id"`
+					//ThreadID string `json:"threadId"`
+					Author User `json:"author"`
+					ID     int  `json:"id"`
 				} `json:"data"`
 				Type string `json:"type"`
 			} `json:"data"`
@@ -103,8 +107,7 @@ type ChatMsg struct {
 	} `json:"push"`
 }
 
-func (msg *ChatMsg) GetChannelName() string {
-	//strings.Replace(msg.Push.Channel, "channel-chat:", "", 1)
+func (msg *ChatMsg) GetChannelId() string {
 	return strings.Split(msg.Push.Channel, ":")[1]
 }
 

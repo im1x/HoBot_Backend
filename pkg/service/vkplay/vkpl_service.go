@@ -320,7 +320,8 @@ func listen() {
 				for _, d := range msg.Push.Pub.Data.Data.Data {
 					var content []interface{}
 					fmt.Printf("Current Data: %+v\n", d)
-					if d.Type == "text" && d.Modificator == "" {
+
+					if d.Type == "text" || d.Type == "link" && d.Modificator == "" {
 						err := json.Unmarshal([]byte(d.Content), &content)
 						if err != nil {
 							log.Error("Error while unmarshalling content:", err)
@@ -359,8 +360,7 @@ func listen() {
 									} else {
 										fmt.Printf("%s: %s\n", cmdAndParam[0], cmdAndParam[1])
 									}*/
-				cmd := getCommandForAlias(cmdAndParam[0], msg.GetChannelName())
-				fmt.Printf("DEBUG: %s|%s|%s\n", cmd, cmdAndParam[0], cmdAndParam[1])
+				cmd := getCommandForAlias(cmdAndParam[0], msg.GetChannelId())
 				if cmd != "" {
 					fmt.Println(cmd)
 					Commands[cmd].Handler(&msg, cmdAndParam[1])
