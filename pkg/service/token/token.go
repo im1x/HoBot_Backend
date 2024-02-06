@@ -1,4 +1,4 @@
-package service
+package token
 
 import (
 	"HoBot_Backend/pkg/model"
@@ -59,11 +59,11 @@ func ValidateAccessToken(token string) (*model.UserDto, error) {
 	return isTokenValid(token, os.Getenv("JWT_ACCESS_SECRET"))
 }
 
-func validateRefreshToken(token string) (*model.UserDto, error) {
+func ValidateRefreshToken(token string) (*model.UserDto, error) {
 	return isTokenValid(token, os.Getenv("JWT_REFRESH_SECRET"))
 }
 
-func saveToken(ctx context.Context, uid interface{}, refreshToken string) error {
+func SaveToken(ctx context.Context, uid interface{}, refreshToken string) error {
 	colToken := DB.GetCollection(DB.Tokens)
 	var err error
 	filter := bson.M{"user_id": uid}
@@ -86,14 +86,14 @@ func saveToken(ctx context.Context, uid interface{}, refreshToken string) error 
 	return err
 }
 
-func removeToken(ctx context.Context, refreshToken string) error {
+func RemoveToken(ctx context.Context, refreshToken string) error {
 	one, err := DB.GetCollection(DB.Tokens).DeleteOne(ctx, bson.M{"refresh_token": refreshToken})
 	if err != nil || one.DeletedCount == 0 {
 		return err
 	}
 	return nil
 }
-func findToken(ctx context.Context, token string) (*model.Token, error) {
+func FindToken(ctx context.Context, token string) (*model.Token, error) {
 	var tokenDB model.Token
 	err := DB.GetCollection(DB.Tokens).FindOne(ctx, bson.M{"refresh_token": token}).Decode(&tokenDB)
 	if err != nil {

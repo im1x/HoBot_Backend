@@ -2,7 +2,7 @@ package handler
 
 import (
 	"HoBot_Backend/pkg/model"
-	"HoBot_Backend/pkg/service"
+	userService "HoBot_Backend/pkg/service/user"
 	"github.com/go-playground/validator/v10"
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/log"
@@ -23,7 +23,7 @@ func Register(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusBadRequest).JSON(err.Error())
 	}
 
-	res, err := service.Registration(c.Context(), *user)
+	res, err := userService.Registration(c.Context(), *user)
 	if err != nil {
 		log.Info(err)
 		return err
@@ -51,7 +51,7 @@ func Login(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusBadRequest).JSON(err.Error())
 	}
 
-	res, err := service.Login(c.Context(), *user)
+	res, err := userService.Login(c.Context(), *user)
 	if err != nil {
 		return err
 	}
@@ -72,7 +72,7 @@ func Logout(c *fiber.Ctx) error {
 		return fiber.NewError(fiber.StatusUnauthorized)
 	}
 
-	err := service.Logout(c.Context(), refreshToken)
+	err := userService.Logout(c.Context(), refreshToken)
 	if err != nil {
 		return err
 	}
@@ -86,7 +86,7 @@ func Refresh(c *fiber.Ctx) error {
 	if refreshToken == "" {
 		return fiber.NewError(fiber.StatusUnauthorized)
 	}
-	res, err := service.RefreshToken(c.Context(), refreshToken)
+	res, err := userService.RefreshToken(c.Context(), refreshToken)
 	if err != nil {
 		return err
 	}

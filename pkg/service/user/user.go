@@ -1,8 +1,9 @@
-package service
+package user
 
 import (
 	"HoBot_Backend/pkg/model"
 	DB "HoBot_Backend/pkg/mongo"
+	tokenService "HoBot_Backend/pkg/service/token"
 	"context"
 	"errors"
 	"github.com/gofiber/fiber/v2"
@@ -35,8 +36,8 @@ func Registration(ctx context.Context, user model.User) (*model.UserData, error)
 	userDto.Id = res.InsertedID.(string)
 	//userDto.Id = res.InsertedID.(primitive.ObjectID)
 
-	accessToken, refreshToken := GenerateTokens(userDto)
-	err = saveToken(ctx, res.InsertedID, refreshToken)
+	accessToken, refreshToken := tokenService.GenerateTokens(userDto)
+	err = tokenService.SaveToken(ctx, res.InsertedID, refreshToken)
 	if err != nil {
 		return nil, err
 	}
@@ -63,8 +64,8 @@ func Login(ctx context.Context, user model.User) (*model.UserData, error) {
 
 	userDto := userDb.ToUserDto()
 
-	accessToken, refreshToken := GenerateTokens(userDto)
-	err = saveToken(ctx, userDb.Id, refreshToken)
+	accessToken, refreshToken := tokenService.GenerateTokens(userDto)
+	err = tokenService.SaveToken(ctx, userDb.Id, refreshToken)
 	if err != nil {
 		return nil, err
 	}
@@ -75,16 +76,16 @@ func Login(ctx context.Context, user model.User) (*model.UserData, error) {
 }
 
 func Logout(ctx context.Context, refreshToken string) error {
-	return removeToken(ctx, refreshToken)
+	return tokenService.RemoveToken(ctx, refreshToken)
 }
 
 func RefreshToken(ctx context.Context, refreshToken string) (*model.UserData, error) {
-	userFromToken, err := validateRefreshToken(refreshToken)
+	userFromToken, err := tokenService.ValidateRefreshToken(refreshToken)
 	if err != nil {
 		return nil, err
 	}
 
-	token, _ := findToken(ctx, refreshToken)
+	token, _ := tokenService.FindToken(ctx, refreshToken)
 	if err != nil || token == nil {
 		return nil, fiber.NewError(fiber.StatusUnauthorized)
 	}
@@ -97,8 +98,8 @@ func RefreshToken(ctx context.Context, refreshToken string) (*model.UserData, er
 
 	userDto := userDb.ToUserDto()
 
-	accessToken, refreshToken := GenerateTokens(userDto)
-	err = saveToken(ctx, userDto.Id, refreshToken)
+	accessToken, refreshToken := tokenService.GenerateTokens(userDto)
+	err = tokenService.SaveToken(ctx, userDto.Id, refreshToken)
 	if err != nil {
 		return nil, err
 	}

@@ -96,9 +96,9 @@ type ChatMsg struct {
 						IsParentDeleted bool `json:"isParentDeleted"`
 						IsFirstMessage  bool `json:"isFirstMessage"`
 					} `json:"flags"`
-					//ThreadID string `json:"threadId"`
-					Author User `json:"author"`
-					ID     int  `json:"id"`
+					ThreadID any  `json:"threadId"`
+					Author   User `json:"author"`
+					ID       int  `json:"id"`
 				} `json:"data"`
 				Type string `json:"type"`
 			} `json:"data"`

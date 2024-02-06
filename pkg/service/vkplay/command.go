@@ -3,6 +3,9 @@ package vkplay
 import (
 	"HoBot_Backend/pkg/service/songRequest"
 	"HoBot_Backend/pkg/service/youtube"
+	"HoBot_Backend/pkg/socketio"
+
+	//"HoBot_Backend/pkg/socketio"
 	"fmt"
 	"github.com/gofiber/fiber/v2/log"
 	"time"
@@ -74,5 +77,6 @@ func srAdd(msg *ChatMsg, param string) {
 		return
 	}
 
+	socketio.Emit(msg.GetChannelId(), socketio.SongRequestAdded, sr)
 	SendMessageToChannel("Song request added to queue", msg.GetChannelId(), msg.GetUser())
 }

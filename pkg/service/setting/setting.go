@@ -1,4 +1,4 @@
-package service
+package setting
 
 import (
 	"HoBot_Backend/pkg/model"
@@ -21,7 +21,7 @@ func GetCommands(ctx context.Context, userId string) ([]model.CommonCommand, err
 }
 
 func GetCommandsList() (*model.CommandList, error) {
-	ctx, cancel := context.WithTimeout(ctxParent, 3*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 	defer cancel()
 
 	var (

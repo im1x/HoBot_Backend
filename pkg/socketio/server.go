@@ -1,7 +1,7 @@
 package socketio
 
 import (
-	tokenService "HoBot_Backend/pkg/service"
+	tokenService "HoBot_Backend/pkg/service/token"
 	"fmt"
 	"github.com/zishang520/engine.io/types"
 	"github.com/zishang520/socket.io/v2/socket"
@@ -13,8 +13,9 @@ var io *socket.Server
 type SocketEvent string
 
 const (
-	SendData  SocketEvent = "SendData"
-	TestEvent SocketEvent = "TestEvent"
+	SendData         SocketEvent = "SendData"
+	TestEvent        SocketEvent = "TestEvent"
+	SongRequestAdded SocketEvent = "SongRequestAdded"
 )
 
 func Start() {
@@ -92,6 +93,6 @@ func getParam(mapData any, paramName string) (string, error) {
 	return paramString, nil
 }
 
-func Emit(room string, event SocketEvent, data string) {
+func Emit(room string, event SocketEvent, data ...any) {
 	io.In(socket.Room(room)).Emit(string(event), data)
 }
