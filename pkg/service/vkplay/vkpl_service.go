@@ -321,7 +321,7 @@ func listen() {
 					var content []interface{}
 					fmt.Printf("Current Data: %+v\n", d)
 
-					if d.Type == "text" || d.Type == "link" && d.Modificator == "" {
+					if (d.Type == "text" || d.Type == "link") && d.Modificator == "" {
 						err := json.Unmarshal([]byte(d.Content), &content)
 						if err != nil {
 							log.Error("Error while unmarshalling content:", err)
