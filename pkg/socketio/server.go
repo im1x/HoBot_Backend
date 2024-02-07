@@ -93,6 +93,6 @@ func getParam(mapData any, paramName string) (string, error) {
 	return paramString, nil
 }
 
-func Emit(room string, event SocketEvent, data ...any) {
+func Emit(room string, event SocketEvent, data any) {
 	io.In(socket.Room(room)).Emit(string(event), data)
 }
