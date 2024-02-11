@@ -14,6 +14,9 @@ func Register(app *fiber.App) {
 	api.Post("/logout", handler.Logout)
 	api.Get("/refresh", handler.Refresh)
 
+	songRequest := api.Group("/songrequest")
+	songRequest.Get("/playlist/:streamer", handler.PlaylistByStreamer)
+
 	app.Use(jwtware.New(jwtware.Config{
 		SigningKey: jwtware.SigningKey{Key: []byte(os.Getenv("JWT_ACCESS_SECRET"))},
 	}))
@@ -26,4 +29,6 @@ func Register(app *fiber.App) {
 	settings.Post("/commands", handler.AddCommandAndAlias)
 	settings.Put("commands/:alias", handler.EditCommand)
 	settings.Delete("/commands/:alias", handler.DeleteCommand)
+
+	songRequest.Get("/playlist", handler.Playlist)
 }
