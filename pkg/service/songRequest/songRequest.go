@@ -24,11 +24,11 @@ func AddSongRequestToDB(songRequest SongRequest) error {
 	return nil
 }
 
-func GetPlaylist(ctxReq context.Context, streamer string) ([]SongRequest, error) {
+func GetPlaylist(ctxReq context.Context, user string) ([]SongRequest, error) {
 	ctx, cancel := context.WithTimeout(ctxReq, 3*time.Second)
 	var playlist []SongRequest
 	defer cancel()
-	cursor, err := DB.GetCollection(DB.SongRequests).Find(ctx, bson.M{"channel_id": streamer})
+	cursor, err := DB.GetCollection(DB.SongRequests).Find(ctx, bson.M{"channel_id": user})
 	if err != nil {
 		log.Error("Error while finding song request:", err)
 		return nil, err
@@ -51,16 +51,16 @@ func GetPlaylist(ctxReq context.Context, streamer string) ([]SongRequest, error)
 	return playlist, nil
 }
 
-func GetUserIdByName(streamer string) (string, error) {
-	req, err := http.NewRequest("GET", fmt.Sprintf("https://api.vkplay.live/v1/blog/%s/public_video_stream/chat/user/", streamer), nil)
+func GetUserIdByName(user string) (string, error) {
+	req, err := http.NewRequest("GET", fmt.Sprintf("https://api.vkplay.live/v1/blog/%s/public_video_stream/chat/user/", user), nil)
 	if err != nil {
-		log.Error("Error while getting streamer id by name:", err)
+		log.Error("Error while getting user id by name:", err)
 	}
 
 	client := http.Client{}
 	resp, err := client.Do(req)
 	if err != nil {
-		log.Error("Error while getting streamer id by name:", err)
+		log.Error("Error while getting user id by name:", err)
 	}
 	defer resp.Body.Close()
 
@@ -75,15 +75,31 @@ func GetUserIdByName(streamer string) (string, error) {
 	var streamerInfo StreamerInfo
 	b, err := io.ReadAll(resp.Body)
 	if err != nil {
-		log.Error("Error while reading streamer info:", err)
+		log.Error("Error while reading user info:", err)
 		return "", nil
 	}
 
 	err = json.Unmarshal(b, &streamerInfo)
 	if err != nil {
-		return "Error while unmarshal streamer info:", err
+		return "Error while unmarshal user info:", err
 	}
 
 	return strconv.Itoa(streamerInfo.Data.Owner.ID), nil
 
+}
+
+func IsPlaylistFull(user string) bool {
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	defer cancel()
+	playlistCount, err := DB.GetCollection(DB.SongRequests).CountDocuments(ctx, bson.M{"channel_id": user})
+	if err != nil {
+		log.Error("Error while getting playlist count:", err)
+		return false
+	}
+
+	if playlistCount >= 30 {
+		return true
+	}
+
+	return false
 }

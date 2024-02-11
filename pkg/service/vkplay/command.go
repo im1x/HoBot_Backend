@@ -36,24 +36,23 @@ func helloCommand(msg *ChatMsg, param string) {
 }
 
 func srAdd(msg *ChatMsg, param string) {
-	fmt.Println("srAdd")
-	fmt.Println("param:", param)
 	if param == "" {
 		return
 	}
 
+	if songRequest.IsPlaylistFull(msg.GetChannelId()) {
+		SendMessageToChannel("Очередь заполнена", msg.GetChannelId(), msg.GetUser())
+		return
+	}
 	vId := param
 	if len(param) > 12 {
-		fmt.Println("param > 12")
 		id, err := youtube.ExtractVideoID(param)
 		if err != nil {
 			log.Error("Error while extracting video id:", err)
 			return
 		}
-		fmt.Println("id:", id)
 		vId = id
 	}
-	fmt.Println("Ready to get info")
 	info, err := youtube.GetVideoInfo(vId)
 	if err != nil {
 		return
