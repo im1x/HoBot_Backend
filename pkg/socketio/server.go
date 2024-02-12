@@ -13,9 +13,11 @@ var io *socket.Server
 type SocketEvent string
 
 const (
-	SendData         SocketEvent = "SendData"
-	TestEvent        SocketEvent = "TestEvent"
-	SongRequestAdded SocketEvent = "SongRequestAdded"
+	SendData             SocketEvent = "SendData"
+	TestEvent            SocketEvent = "TestEvent"
+	SongRequestAdded     SocketEvent = "SongRequestAdded"
+	SongRequestSetVolume SocketEvent = "SongRequestSetVolume"
+	SongRequestSkipSong  SocketEvent = "SongRequestSkipSong"
 )
 
 func Start() {

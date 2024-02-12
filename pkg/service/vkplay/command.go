@@ -4,6 +4,7 @@ import (
 	"HoBot_Backend/pkg/service/songRequest"
 	"HoBot_Backend/pkg/service/youtube"
 	"HoBot_Backend/pkg/socketio"
+	"strconv"
 
 	//"HoBot_Backend/pkg/socketio"
 	"fmt"
@@ -21,6 +22,8 @@ var Commands = make(map[string]Command)
 func init() {
 	AddCommand("Greating_To_User", helloCommand)
 	AddCommand("SR_SongRequest", srAdd)
+	AddCommand("SR_SetVolume", srSetVolume)
+	AddCommand("SR_SkipSong", srSkip)
 }
 
 func AddCommand(name string, handler func(msg *ChatMsg, param string)) {
@@ -78,4 +81,28 @@ func srAdd(msg *ChatMsg, param string) {
 
 	socketio.Emit(msg.GetChannelId(), socketio.SongRequestAdded, sr)
 	SendMessageToChannel("Song request added to queue", msg.GetChannelId(), msg.GetUser())
+}
+
+func srSetVolume(msg *ChatMsg, param string) {
+	if param == "" {
+		return
+	}
+
+	socketio.Emit(msg.GetChannelId(), socketio.SongRequestSetVolume, param)
+	vol, err := strconv.Atoi(param)
+	if err != nil {
+		return
+	}
+	vol = max(0, min(vol, 100))
+	
+	SendMessageToChannel(fmt.Sprintf("Громкость реквестов установлена на %v%%", vol), msg.GetChannelId(), nil)
+}
+
+func srSkip(msg *ChatMsg, param string) {
+	err := songRequest.SkipSong(msg.GetChannelId())
+	if err != nil {
+		return
+	}
+	socketio.Emit(msg.GetChannelId(), socketio.SongRequestSkipSong, "")
+	SendMessageToChannel(msg.GetDisplayName()+" пропустил реквест", msg.GetChannelId(), nil)
 }
