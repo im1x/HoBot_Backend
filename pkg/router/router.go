@@ -31,4 +31,5 @@ func Register(app *fiber.App) {
 	settings.Delete("/commands/:alias", handler.DeleteCommand)
 
 	songRequest.Get("/playlist", handler.Playlist)
+	songRequest.Post("/skip", handler.SkipSong)
 }

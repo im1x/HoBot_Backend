@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"github.com/gofiber/fiber/v2/log"
 	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/mongo/options"
 	"io"
 	"net/http"
 	"strconv"
@@ -102,4 +103,18 @@ func IsPlaylistFull(user string) bool {
 	}
 
 	return false
+}
+
+func SkipSong(channelId string) error {
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	defer cancel()
+
+	filter := bson.M{"channel_id": channelId}
+	opt := options.FindOneAndDelete().SetSort(bson.D{{"_id", 1}})
+	result := DB.GetCollection(DB.SongRequests).FindOneAndDelete(ctx, filter, opt)
+	if result.Err() != nil {
+		log.Error("Error while deleting song request:", result.Err())
+		return result.Err()
+	}
+	return nil
 }

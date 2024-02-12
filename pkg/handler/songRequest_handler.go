@@ -29,8 +29,17 @@ func Playlist(c *fiber.Ctx) error {
 	userId := parseUserIdFromRequest(c)
 	playlist, err := songRequest.GetPlaylist(c.Context(), userId)
 	if err != nil {
-		return err
+		return c.Status(fiber.StatusInternalServerError).JSON(err)
 	}
 
 	return c.Status(fiber.StatusOK).JSON(playlist)
+}
+
+func SkipSong(c *fiber.Ctx) error {
+	userId := parseUserIdFromRequest(c)
+	err := songRequest.SkipSong(userId)
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(err)
+	}
+	return nil
 }
