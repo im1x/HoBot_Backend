@@ -18,6 +18,7 @@ const (
 	SongRequestAdded     SocketEvent = "SongRequestAdded"
 	SongRequestSetVolume SocketEvent = "SongRequestSetVolume"
 	SongRequestSkipSong  SocketEvent = "SongRequestSkipSong"
+	SongRequestPlayPause SocketEvent = "SongRequestPlayPause"
 )
 
 func Start() {
