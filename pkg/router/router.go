@@ -32,4 +32,5 @@ func Register(app *fiber.App) {
 
 	songRequest.Get("/playlist", handler.Playlist)
 	songRequest.Post("/skip", handler.SkipSong)
+	songRequest.Delete("/playlist", handler.ClearPlaylist)
 }

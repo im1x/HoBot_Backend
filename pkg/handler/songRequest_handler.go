@@ -43,3 +43,12 @@ func SkipSong(c *fiber.Ctx) error {
 	}
 	return nil
 }
+
+func ClearPlaylist(c *fiber.Ctx) error {
+	userId := parseUserIdFromRequest(c)
+	err := songRequest.RemoveAllSongs(userId)
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(err)
+	}
+	return nil
+}

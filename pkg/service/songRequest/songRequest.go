@@ -118,3 +118,14 @@ func SkipSong(channelId string) error {
 	}
 	return nil
 }
+
+func RemoveAllSongs(channelId string) error {
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	defer cancel()
+	_, err := DB.GetCollection(DB.SongRequests).DeleteMany(ctx, bson.M{"channel_id": channelId})
+	if err != nil {
+		log.Error("Error while deleting playlist:", err)
+		return err
+	}
+	return nil
+}
