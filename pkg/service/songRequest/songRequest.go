@@ -4,9 +4,11 @@ import (
 	DB "HoBot_Backend/pkg/mongo"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"github.com/gofiber/fiber/v2/log"
 	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 	"io"
 	"net/http"
@@ -128,4 +130,30 @@ func RemoveAllSongs(channelId string) error {
 		return err
 	}
 	return nil
+}
+
+func GetCurrentSong(channelId string) (SongRequest, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	defer cancel()
+
+	var curSong SongRequest
+	filter := bson.M{"channel_id": channelId}
+	opt := options.FindOne().SetSort(bson.D{{"_id", 1}})
+	res := DB.GetCollection(DB.SongRequests).FindOne(ctx, filter, opt)
+
+	if res.Err() != nil {
+		if errors.Is(res.Err(), mongo.ErrNoDocuments) {
+			return SongRequest{}, nil
+		}
+		log.Error("Error while getting current song:", res.Err())
+		return SongRequest{}, res.Err()
+	}
+
+	err := res.Decode(&curSong)
+	if err != nil {
+		log.Error("Error decoding current song:", err)
+		return SongRequest{}, err
+	}
+
+	return curSong, nil
 }

@@ -25,6 +25,7 @@ func init() {
 	AddCommand("SR_SetVolume", srSetVolume)
 	AddCommand("SR_SkipSong", srSkip)
 	AddCommand("SR_PlayPause", srPlayPause)
+	AddCommand("SR_CurrentSong", srCurrentSong)
 }
 
 func AddCommand(name string, handler func(msg *ChatMsg, param string)) {
@@ -110,4 +111,18 @@ func srSkip(msg *ChatMsg, param string) {
 
 func srPlayPause(msg *ChatMsg, param string) {
 	socketio.Emit(msg.GetChannelId(), socketio.SongRequestPlayPause, "")
+}
+
+func srCurrentSong(msg *ChatMsg, param string) {
+	song, err := songRequest.GetCurrentSong(msg.GetChannelId())
+	if err != nil {
+		return
+	}
+
+	if song.YT_ID == "" {
+		SendMessageToChannel("Сейчас ничего не играет", msg.GetChannelId(), nil)
+		return
+	}
+
+	SendMessageToChannel(fmt.Sprintf("Текущий реквест: %s (https://youtu.be/%s)", song.Title, song.YT_ID), msg.GetChannelId(), nil)
 }

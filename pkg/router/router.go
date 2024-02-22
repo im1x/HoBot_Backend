@@ -21,8 +21,6 @@ func Register(app *fiber.App) {
 		SigningKey: jwtware.SigningKey{Key: []byte(os.Getenv("JWT_ACCESS_SECRET"))},
 	}))
 
-	api.Get("/users", handler.Users)
-
 	settings := api.Group("/settings")
 	settings.Get("/commands", handler.GetCommands)
 	settings.Get("/commandsdropdown", handler.GetCommandsDropdown)

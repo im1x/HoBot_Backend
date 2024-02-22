@@ -101,11 +101,6 @@ func Refresh(c *fiber.Ctx) error {
 	return c.JSON(res)
 }
 
-func Users(c *fiber.Ctx) error {
-	name := parseUserIdFromRequest(c)
-	return c.SendString("Welcome " + name)
-}
-
 func parseUserIdFromRequest(c *fiber.Ctx) string {
 	user := c.Locals("user").(*jwt.Token)
 	claims := user.Claims.(jwt.MapClaims)
