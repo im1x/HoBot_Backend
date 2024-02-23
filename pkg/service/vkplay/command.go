@@ -4,6 +4,7 @@ import (
 	"HoBot_Backend/pkg/service/songRequest"
 	"HoBot_Backend/pkg/service/youtube"
 	"HoBot_Backend/pkg/socketio"
+	"context"
 	"strconv"
 
 	//"HoBot_Backend/pkg/socketio"
@@ -26,6 +27,7 @@ func init() {
 	AddCommand("SR_SkipSong", srSkip)
 	AddCommand("SR_PlayPause", srPlayPause)
 	AddCommand("SR_CurrentSong", srCurrentSong)
+	AddCommand("SR_MySong", srMySong)
 }
 
 func AddCommand(name string, handler func(msg *ChatMsg, param string)) {
@@ -125,4 +127,25 @@ func srCurrentSong(msg *ChatMsg, param string) {
 	}
 
 	SendMessageToChannel(fmt.Sprintf("Текущий реквест: %s (https://youtu.be/%s)", song.Title, song.YT_ID), msg.GetChannelId(), nil)
+}
+
+func srMySong(msg *ChatMsg, param string) {
+	playlist, err := songRequest.GetPlaylist(context.Background(), msg.GetChannelId())
+	if err != nil {
+		return
+	}
+
+	timeToMySong := 0
+	for i, song := range playlist {
+		if song.By == msg.GetDisplayName() {
+			t := time.Duration(timeToMySong) * time.Second
+			if i == 0 {
+				SendMessageToChannel("Твой реквест играет прямо сейчас!", msg.GetChannelId(), msg.GetUser())
+				break
+			}
+			SendMessageToChannel(fmt.Sprintf("До твоего реквеста %v (~%s)", i, fmtDuration(t)), msg.GetChannelId(), msg.GetUser())
+			break
+		}
+		timeToMySong += song.Length
+	}
 }
