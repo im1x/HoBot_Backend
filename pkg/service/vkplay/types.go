@@ -127,9 +127,15 @@ type Config struct {
 }
 
 type MsgTextContent struct {
-	Modificator string `json:"modificator"`
 	Type        string `json:"type"`
 	Content     string `json:"content"`
+	Modificator string `json:"modificator"`
+}
+
+type MsgLinkContent struct {
+	Type    string `json:"type"`
+	Content string `json:"content"`
+	Url     string `json:"url"`
 }
 
 type MsgMentionContent struct {

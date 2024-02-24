@@ -15,6 +15,7 @@ import (
 	"net/http/cookiejar"
 	"net/url"
 	"os"
+	"regexp"
 	"strings"
 	"time"
 )
@@ -427,6 +428,8 @@ func getCommandsFromDB() {
 
 func SendMessageToChannel(msgText string, channel string, mention *User) {
 	var msg []interface{}
+
+	// Adding mention if present
 	if mention != nil {
 		m := &MsgMentionContent{
 			Type:        "mention",
@@ -436,33 +439,54 @@ func SendMessageToChannel(msgText string, channel string, mention *User) {
 			Name:        mention.Name,
 		}
 		msg = append(msg, m)
-		txt := &MsgTextContent{
-			Modificator: "",
-			Type:        "text",
-			Content:     "[\", \",\"unstyled\",[]]",
+	}
+
+	// Parsing message text for links
+	re := regexp.MustCompile(`(https?://[^\s]+)`)
+	segments := re.Split(msgText, -1)
+	matches := re.FindAllStringSubmatch(msgText, -1)
+
+	// Adding segments and links to the message
+	for i, seg := range segments {
+		// Adding non-link segments
+		if seg != "" {
+			txt := &MsgTextContent{
+				Modificator: "",
+				Type:        "text",
+				Content:     fmt.Sprintf("[\"%s \",\"unstyled\",[]]", seg),
+			}
+			msg = append(msg, txt)
 		}
 
-		msg = append(msg, txt)
-	}
-	txt := &MsgTextContent{
-		Modificator: "",
-		Type:        "text",
-		Content:     fmt.Sprintf("[\"%s \",\"unstyled\",[]]", msgText),
+		// Adding link blocks
+		if i < len(matches) {
+			match := matches[i][0]
+			link := &MsgLinkContent{
+				Type:    "link",
+				Content: fmt.Sprintf("[\"%s \",\"unstyled\",[]]", match),
+				Url:     match,
+			}
+			msg = append(msg, link)
+		}
 	}
 
-	msg = append(msg, txt)
-	txt = &MsgTextContent{
+	// Adding block end
+	txt := &MsgTextContent{
 		Modificator: "BLOCK_END",
 		Type:        "text",
 		Content:     "",
 	}
 	msg = append(msg, txt)
 
+	// Marshalling the message
 	b, _ := json.Marshal(msg)
 	body := strings.NewReader("data=" + string(b))
+
+	// Creating and sending the request
 	req, err := http.NewRequest("POST", fmt.Sprintf("https://api.vkplay.live/v1/blog/%s/public_video_stream/chat", channel), body)
 	if err != nil {
 		log.Error("Error while sending message to channel:", err)
+		return
 	}
 
 	req.Header.Add("Origin", "https://vkplay.live")
@@ -475,6 +499,7 @@ func SendMessageToChannel(msgText string, channel string, mention *User) {
 	resp, err := client.Do(req)
 	if err != nil {
 		log.Error("Error while sending message to channel:", err)
+		return
 	}
 	defer resp.Body.Close()
 
