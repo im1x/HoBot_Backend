@@ -354,17 +354,20 @@ func listen() {
 									fmt.Println(string(empJSON))*/
 
 				fmt.Printf("%s: %s\n", from, trimSb)
-				cmdAndParam := getCommandFromMessage(trimSb)
+				alias, param := getAliasAndParamFromMessage(trimSb)
 				//fmt.Printf("%s | len: %d\n", cmdAndParam, len(cmdAndParam))
 				/*					if len(cmdAndParam) == 1 {
 										fmt.Printf("%s\n", cmdAndParam[0])
 									} else {
 										fmt.Printf("%s: %s\n", cmdAndParam[0], cmdAndParam[1])
 									}*/
-				cmd := getCommandForAlias(cmdAndParam[0], msg.GetChannelId())
+				cmd, payload := getCommandAndPayloadForAlias(alias, msg.GetChannelId())
 				if cmd != "" {
+					if payload != "" {
+						param = payload
+					}
 					fmt.Println(cmd)
-					Commands[cmd].Handler(&msg, cmdAndParam[1])
+					Commands[cmd].Handler(&msg, param)
 				}
 			}
 		}

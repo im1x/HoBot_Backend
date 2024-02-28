@@ -2,7 +2,7 @@ package handler
 
 import (
 	"HoBot_Backend/pkg/model"
-	"HoBot_Backend/pkg/service/setting"
+	"HoBot_Backend/pkg/service/settings"
 	"fmt"
 	"github.com/gofiber/fiber/v2"
 	"net/url"
@@ -11,7 +11,7 @@ import (
 
 func GetCommands(c *fiber.Ctx) error {
 	userId := parseUserIdFromRequest(c)
-	commands, err := setting.GetCommands(c.Context(), userId)
+	commands, err := settings.GetCommands(c.Context(), userId)
 	if err != nil {
 		return fiber.NewError(fiber.StatusInternalServerError, err.Error())
 	}
@@ -21,7 +21,7 @@ func GetCommandsDropdown(c *fiber.Ctx) error {
 	// Record start time
 	startTime := time.Now()
 
-	commandsList, err := setting.GetCommandsList()
+	commandsList, err := settings.GetCommandsList()
 
 	// Record end time
 	endTime := time.Now()
@@ -49,7 +49,7 @@ func AddCommandAndAlias(c *fiber.Ctx) error {
 
 	fmt.Println("userId: ", userId)
 
-	commandList, err := setting.AddCommandForUser(c.Context(), userId, newCommand)
+	commandList, err := settings.AddCommandForUser(c.Context(), userId, newCommand)
 	if err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(err.Error())
 	}
@@ -73,7 +73,7 @@ func EditCommand(c *fiber.Ctx) error {
 	}
 
 	userId := parseUserIdFromRequest(c)
-	commands, err := setting.EditCommandForUser(c.Context(), userId, alias, editCommand)
+	commands, err := settings.EditCommandForUser(c.Context(), userId, alias, editCommand)
 	if err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(err.Error())
 	}
@@ -88,7 +88,7 @@ func DeleteCommand(c *fiber.Ctx) error {
 	}
 
 	userId := parseUserIdFromRequest(c)
-	commands, err := setting.DeleteCommandForUser(c.Context(), userId, alias)
+	commands, err := settings.DeleteCommandForUser(c.Context(), userId, alias)
 	if err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(err.Error())
 	}

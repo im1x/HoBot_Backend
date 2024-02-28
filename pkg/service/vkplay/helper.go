@@ -13,19 +13,22 @@ func isPING(data []byte) bool {
 	return data[0] == '{' && data[1] == '}'
 }
 
-func getCommandFromMessage(message string) []string {
+func getAliasAndParamFromMessage(message string) (string, string) {
 	if message == "" {
-		return nil
+		return "", ""
 	}
 	commandAndParam := strings.Fields(strings.ReplaceAll(message, "\u00a0", " "))
 	if len(commandAndParam) < 2 {
 		commandAndParam = append(commandAndParam, "")
 	}
-	return commandAndParam[:2]
+	return commandAndParam[0], commandAndParam[1]
 }
-func getCommandForAlias(alias, channel string) (cmd string) {
+func getCommandAndPayloadForAlias(alias, channel string) (cmd, param string) {
 	if chnl, ok := ChannelsCommands.Channels[channel]; ok {
 		cmd = chnl.Aliases[alias].Command
+		if chnl.Aliases[alias].Payload != "" {
+			param = chnl.Aliases[alias].Payload
+		}
 	}
 	return
 }

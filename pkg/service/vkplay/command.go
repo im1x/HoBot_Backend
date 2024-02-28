@@ -28,6 +28,7 @@ func init() {
 	AddCommand("SR_PlayPause", srPlayPause)
 	AddCommand("SR_CurrentSong", srCurrentSong)
 	AddCommand("SR_MySong", srMySong)
+	AddCommand("Print_Text", printText)
 }
 
 func AddCommand(name string, handler func(msg *ChatMsg, param string)) {
@@ -126,7 +127,7 @@ func srCurrentSong(msg *ChatMsg, param string) {
 		return
 	}
 
-	SendMessageToChannel(fmt.Sprintf("Текущий реквест: %s (https://youtu.be/%s)", song.Title, song.YT_ID), msg.GetChannelId(), nil)
+	SendMessageToChannel(fmt.Sprintf("Текущий реквест: %s ( https://youtu.be/%s )", song.Title, song.YT_ID), msg.GetChannelId(), nil)
 }
 
 func srMySong(msg *ChatMsg, param string) {
@@ -148,4 +149,8 @@ func srMySong(msg *ChatMsg, param string) {
 		}
 		timeToMySong += song.Length
 	}
+}
+
+func printText(msg *ChatMsg, param string) {
+	SendMessageToChannel(param, msg.GetChannelId(), msg.GetUser())
 }

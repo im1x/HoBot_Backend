@@ -21,4 +21,5 @@ type CommonCommand struct {
 	Alias       string `json:"alias" validate:"required,gte=3"`
 	AccessLevel int    `json:"access_level"`
 	Description string `json:"description"`
+	Payload     string `json:"payload"`
 }

@@ -1,4 +1,4 @@
-package setting
+package settings
 
 import (
 	"HoBot_Backend/pkg/model"
@@ -118,6 +118,7 @@ func AddCommandForUser(ctx context.Context, userId string, command *model.Common
 	vkplay.ChannelsCommands.Channels[userId].Aliases[command.Alias] = vkplay.CmdDetails{
 		Command:     command.Command,
 		AccessLevel: command.AccessLevel,
+		Payload:     command.Payload,
 	}
 	fmt.Println(vkplay.ChannelsCommands.Channels[userId].Aliases)
 	fmt.Println(ctx)
@@ -140,6 +141,7 @@ func EditCommandForUser(ctx context.Context, userId string, alias string, comman
 	vkplay.ChannelsCommands.Channels[userId].Aliases[command.Alias] = vkplay.CmdDetails{
 		Command:     command.Command,
 		AccessLevel: command.AccessLevel,
+		Payload:     command.Payload,
 	}
 	_, err := DB.GetCollection(DB.UserSettings).UpdateByID(ctx, userId, bson.M{"$set": bson.M{"aliases": vkplay.ChannelsCommands.Channels[userId].Aliases}})
 	if err != nil {
@@ -182,6 +184,7 @@ func getCommandsWithDescription(ctx context.Context, userId string) ([]model.Com
 			Command:     vkplay.ChannelsCommands.Channels[userId].Aliases[item].Command,
 			Description: commandDescription.CommandsDescription[vkplay.ChannelsCommands.Channels[userId].Aliases[item].Command],
 			AccessLevel: vkplay.ChannelsCommands.Channels[userId].Aliases[item].AccessLevel,
+			Payload:     vkplay.ChannelsCommands.Channels[userId].Aliases[item].Payload,
 		})
 	}
 	return cmds, nil

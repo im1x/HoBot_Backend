@@ -45,11 +45,6 @@ func main() {
 	}))
 	router.Register(app)
 
-	// GET /api/register
-	/*	app.Get("/api/*", func(c *fiber.Ctx) error {
-		msg := fmt.Sprintf("✋ %s", c.Params("*"))
-		return c.SendString(msg) // => ✋ register
-	})*/
 	go socketio.Start()
 	log.Fatal(app.Listen(":" + os.Getenv("PORT")))
 

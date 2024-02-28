@@ -158,6 +158,7 @@ type ChCommand struct {
 type CmdDetails struct {
 	Command     string `bson:"command"`
 	AccessLevel int    `bson:"access_level"`
+	Payload     string `bson:"payload"`
 }
 
 // -----------
