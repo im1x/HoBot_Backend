@@ -33,6 +33,18 @@ func getCommandAndPayloadForAlias(alias, channel string) (cmd, param string) {
 	return
 }
 
+func hasAccess(alias string, msg *ChatMsg) bool {
+	accessLevel := ChannelsCommands.Channels[msg.GetChannelId()].Aliases[alias].AccessLevel
+	switch accessLevel {
+	case 1:
+		return msg.GetUser().IsChatModerator || msg.GetUser().IsChannelModerator || msg.GetUser().IsOwner
+	case 2:
+		return msg.GetUser().IsOwner
+	default:
+		return true
+	}
+}
+
 func fmtDuration(d time.Duration) string {
 	h := d / time.Hour
 	d -= h * time.Hour

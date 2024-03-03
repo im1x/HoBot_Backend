@@ -355,6 +355,9 @@ func listen() {
 
 				fmt.Printf("%s: %s\n", from, trimSb)
 				alias, param := getAliasAndParamFromMessage(trimSb)
+				if !hasAccess(alias, &msg) {
+					continue
+				}
 				//fmt.Printf("%s | len: %d\n", cmdAndParam, len(cmdAndParam))
 				/*					if len(cmdAndParam) == 1 {
 										fmt.Printf("%s\n", cmdAndParam[0])
