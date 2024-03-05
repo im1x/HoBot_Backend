@@ -7,7 +7,6 @@ import (
 	"HoBot_Backend/pkg/socketio"
 	"context"
 	"github.com/gofiber/fiber/v2"
-	"github.com/gofiber/fiber/v2/middleware/cors"
 	"github.com/joho/godotenv"
 	"log"
 	"os"
@@ -17,10 +16,11 @@ func main() {
 	//env
 	err := godotenv.Load(".env")
 	if err != nil {
-		log.Fatal("Error loading .env file")
+		log.Println("No .env file found")
 	}
 	if ok := testEnvs([]string{
 		"PORT",
+		"IPV6_ONLY",
 		"MONGODB_URI",
 		"DB_NAME",
 		"JWT_ACCESS_SECRET",
@@ -37,12 +37,19 @@ func main() {
 	vkplay.Start(ctx)
 
 	//Http server
-	app := fiber.New()
-	app.Use(cors.New(cors.Config{
+	var app *fiber.App
+	if os.Getenv("IPV6_ONLY") == "true" {
+		app = fiber.New(fiber.Config{
+			Network: "tcp6",
+		})
+	} else {
+		app = fiber.New()
+	}
+	/*app.Use(cors.New(cors.Config{
 		AllowCredentials: true,
 		MaxAge:           600,
 		AllowOrigins:     "http://localhost:5173",
-	}))
+	}))*/
 	router.Register(app)
 
 	go socketio.Start()
