@@ -35,7 +35,8 @@ func Start(ctx context.Context) {
 	if err != nil {
 		log.Error(err)
 	}
-
+	go listen()
+	getCommandsFromDB()
 }
 
 func refreshVkplToken() error {
@@ -193,6 +194,7 @@ func getWsToken() string {
 }
 
 func connectWS() error {
+	vkpl.wsCounter = 0
 	wsToken := getWsToken()
 	if wsToken == "" {
 		return fmt.Errorf("ws token is empty")
@@ -231,8 +233,6 @@ func connectWS() error {
 		log.Error("Error while joining chat:", err)
 		return err
 	}
-	getCommandsFromDB()
-	go listen()
 	return nil
 }
 
@@ -282,7 +282,13 @@ func listen() {
 		p, err := ReadWSMessage()
 		if err != nil {
 			log.Error("Error while reading ws message:", err)
-			return
+			log.Info("VKPL: Reconnecting to ws")
+			err := connectWS()
+			if err != nil {
+				log.Error("Error while reconnecting to ws:", err)
+			}
+			//return
+			continue
 		}
 		//log.Info("VKPL-from-chat: ", string(p))
 		if isPING(p) {
