@@ -5,30 +5,41 @@ import (
 )
 
 type User struct {
-	Id          string `bson:"_id,omitempty" json:"id,omitempty"`
-	Login       string `bson:"login,omitempty" json:"login,omitempty" validate:"required"`
-	Password    string `bson:"password,omitempty" json:"password,omitempty" validate:"required,gte=8"`
-	Channel     string `bson:"channel,omitempty" json:"channel,omitempty"`
-	IsConfirmed bool   `bson:"confirmed,omitempty" json:"confirmed,omitempty"`
+	Id        string `bson:"_id,omitempty" json:"id,omitempty"`
+	Nick      string `bson:"nick,omitempty" json:"nick,omitempty"`
+	Channel   string `bson:"channel,omitempty" json:"channel,omitempty"`
+	AvatarURL string `bson:"avatar_url,omitempty" json:"avatar_url,omitempty"`
 }
 
 func (u User) ToUserDto() UserDto {
 	return UserDto{
-		Id:          u.Id,
-		Login:       u.Login,
-		IsConfirmed: u.IsConfirmed,
+		Id:      u.Id,
+		Channel: u.Channel,
 	}
 }
 
 type UserDto struct {
-	Id          string `json:"id,omitempty"`
-	Login       string `json:"login,omitempty"`
-	IsConfirmed bool   `json:"confirmed"`
+	Id      string `json:"id,omitempty"`
+	Channel string `json:"channel,omitempty"`
 	jwt.RegisteredClaims
 }
 
-type UserData struct {
-	AccessToken  string `json:"access_token"`
-	RefreshToken string `json:"refresh_token"`
-	User         UserDto
+type AccessToken struct {
+	AccessToken string `json:"access_token"`
+}
+
+type CurrentUserVkpl struct {
+	Data struct {
+		User struct {
+			ID                 int    `json:"id"`
+			Nick               string `json:"nick"`
+			NickColor          int    `json:"nick_color"`
+			AvatarURL          string `json:"avatar_url"`
+			IsStreamer         bool   `json:"is_streamer"`
+			IsVerifiedStreamer bool   `json:"is_verified_streamer"`
+		} `json:"user"`
+		Channel struct {
+			Url string `json:"url"`
+		} `json:"channel"`
+	} `json:"data"`
 }

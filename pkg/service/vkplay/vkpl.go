@@ -1,6 +1,7 @@
 package vkplay
 
 import (
+	"HoBot_Backend/pkg/model"
 	DB "HoBot_Backend/pkg/mongo"
 	"bytes"
 	"context"
@@ -10,6 +11,7 @@ import (
 	"github.com/gorilla/websocket"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/mongo/options"
 	"io"
 	"net/http"
 	"net/http/cookiejar"
@@ -254,9 +256,13 @@ func ReadWSMessage() (p []byte, err error) {
 	return p, nil
 }
 
-func joinChat(channel string) error {
+func joinOrLeaveChat(channel string, join bool) error {
 	vkpl.wsCounter++
-	p := fmt.Sprintf(`{"subscribe":{"channel":"channel-chat:%s"},"id":%d}`, channel, vkpl.wsCounter)
+	action := "subscribe"
+	if !join {
+		action = "unsubscribe"
+	}
+	p := fmt.Sprintf(`{"%s":{"channel":"channel-chat:%s"},"id":%d}`, action, channel, vkpl.wsCounter)
 	err := SendWSMessage([]byte(p))
 	if err != nil {
 		return err
@@ -265,10 +271,10 @@ func joinChat(channel string) error {
 }
 
 func joinAllChats() error {
-	channels := getWsChannelsFromDB()
+	channels := getWsChannelsFromDB().ChannelsAutoJoin
 
 	for _, channel := range channels {
-		err := joinChat(channel)
+		err := joinOrLeaveChat(channel, true)
 		if err != nil {
 			log.Error("Error while joining chat:", err)
 			return err
@@ -383,7 +389,7 @@ func listen() {
 	}
 }
 
-func getWsChannelsFromDB() []string {
+func getWsChannelsFromDB() Config {
 	var config Config
 	ctx, cancel := context.WithTimeout(ctxParent, 3*time.Second)
 	defer cancel()
@@ -391,9 +397,64 @@ func getWsChannelsFromDB() []string {
 	err := DB.GetCollection(DB.Config).FindOne(ctx, bson.M{"_id": "ws"}).Decode(&config)
 	if err != nil {
 		log.Error("Error while getting channels:", err)
-		return nil
+		return Config{}
 	}
-	return config.ChannelsAutoJoin
+	return config
+}
+
+func saveWsChannelsToDB(config Config) error {
+	ctx, cancel := context.WithTimeout(ctxParent, 3*time.Second)
+	defer cancel()
+	_, err := DB.GetCollection(DB.Config).UpdateByID(ctx, "ws", bson.M{"$set": config})
+	if err != nil {
+		log.Error("Error while saving channels:", err)
+		return err
+	}
+	return nil
+}
+
+func AddUserToWs(userId string) error {
+	// DB
+	wsChannels := getWsChannelsFromDB()
+	wsChannels.ChannelsAutoJoin = append(wsChannels.ChannelsAutoJoin, userId)
+	err := saveWsChannelsToDB(wsChannels)
+	if err != nil {
+		log.Error("Error while adding user to ws:", err)
+		return err
+	}
+
+	// WS
+	err = joinOrLeaveChat(userId, true)
+	if err != nil {
+		log.Error("Error while joining chat for new user:", err)
+		return err
+	}
+
+	return nil
+}
+
+func removeUserFromWs(userId string) error {
+	// DB
+	wsChannels := getWsChannelsFromDB()
+	for i, v := range wsChannels.ChannelsAutoJoin {
+		if v == userId {
+			wsChannels.ChannelsAutoJoin = append(wsChannels.ChannelsAutoJoin[:i], wsChannels.ChannelsAutoJoin[i+1:]...)
+			break
+		}
+	}
+	err := saveWsChannelsToDB(wsChannels)
+	if err != nil {
+		log.Error("Error while removing user from ws:", err)
+		return err
+	}
+
+	// WS
+	err = joinOrLeaveChat(userId, false)
+	if err != nil {
+		log.Error("Error while leaving chat for removed user:", err)
+		return err
+	}
+	return nil
 }
 
 func getCommandsFromDB() {
@@ -519,4 +580,76 @@ func SendMessageToChannel(msgText string, channel string, mention *User) {
 		rd, _ := io.ReadAll(resp.Body)
 		log.Info(string(rd))
 	}
+}
+
+func CodeToToken(code string) (string, error) {
+	reqUrl := "https://api.vkplay.live/oauth/server/token"
+	reqData := url.Values{
+		"code":         {code},
+		"grant_type":   {"authorization_code"},
+		"redirect_uri": {os.Getenv("CLIENT_AUTH_REDIRECT")},
+	}
+
+	req, err := http.NewRequest("POST", reqUrl, bytes.NewBufferString(reqData.Encode()))
+	if err != nil {
+		return "", err
+	}
+
+	req.Header.Set("Authorization", "Basic "+os.Getenv("VKPL_APP_CREDEANTIALS"))
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+
+	client := &http.Client{}
+	resp, err := client.Do(req)
+	if resp.StatusCode != 200 || err != nil {
+		log.Error("Error while changing code to token")
+		return "", err
+	}
+	defer resp.Body.Close()
+
+	b, err := io.ReadAll(resp.Body)
+	if err != nil {
+		log.Error("Error while changing code to token, read body:", err)
+		return "", err
+	}
+
+	var token map[string]interface{}
+	json.Unmarshal(b, &token)
+	return token["access_token"].(string), nil
+}
+
+func GetCurrentUserInfo(accessToken string) (model.CurrentUserVkpl, error) {
+	req, err := http.NewRequest("GET", "https://apidev.vkplay.live/v1/current_user", nil)
+	if err != nil {
+		return model.CurrentUserVkpl{}, err
+	}
+	req.Header.Add("Authorization", "Bearer "+accessToken)
+	req.Header.Add("Content-Type", "application/json")
+
+	client := &http.Client{}
+	resp, err := client.Do(req)
+	if err != nil {
+		log.Error("Error while getting ws token:", err)
+		return model.CurrentUserVkpl{}, err
+	}
+	defer resp.Body.Close()
+
+	var currentUserVkpl model.CurrentUserVkpl
+	err = json.NewDecoder(resp.Body).Decode(&currentUserVkpl)
+	if err != nil {
+		return model.CurrentUserVkpl{}, err
+	}
+
+	return currentUserVkpl, nil
+}
+
+func InsertOrUpdateUser(ctx context.Context, user model.User) error {
+	log.Info("VKPL: Inserting or updating user")
+	ctx, cancel := context.WithTimeout(ctx, 3*time.Second)
+	defer cancel()
+	_, err := DB.GetCollection(DB.Users).UpdateByID(ctx, user.Id, bson.M{"$set": user}, options.Update().SetUpsert(true))
+	if err != nil {
+		log.Error("Error while inserting or updating user:", err)
+		return err
+	}
+	return nil
 }

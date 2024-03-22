@@ -9,17 +9,23 @@ import (
 
 func Register(app *fiber.App) {
 	api := app.Group("/api")
-	api.Post("/register", handler.Register)
-	api.Post("/login", handler.Login)
+	/*	api.Post("/register", handler.Register)
+		api.Post("/login", handler.Login)*/
 	api.Post("/logout", handler.Logout)
 	api.Get("/refresh", handler.Refresh)
+	api.Get("/vkpl", handler.VkplAuth)
 
 	songRequest := api.Group("/songrequest")
 	songRequest.Get("/playlist/:streamer", handler.PlaylistByStreamer)
 
 	app.Use(jwtware.New(jwtware.Config{
+		ErrorHandler: func(c *fiber.Ctx, err error) error {
+			return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"status": "error", "message": "Invalid or expired JWT"})
+		},
 		SigningKey: jwtware.SigningKey{Key: []byte(os.Getenv("JWT_ACCESS_SECRET"))},
 	}))
+
+	api.Get("/user", handler.GetCurrentUser)
 
 	api.Post("/feedback", handler.Feedback)
 

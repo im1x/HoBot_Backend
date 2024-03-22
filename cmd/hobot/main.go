@@ -27,7 +27,8 @@ func main() {
 		"JWT_REFRESH_SECRET",
 		"WS_PORT",
 		"VKPL_LOGIN",
-		"VKPL_PASSWORD"}); !ok {
+		"VKPL_PASSWORD",
+		"VKPL_APP_CREDEANTIALS"}); !ok {
 		log.Fatalln("Please add required envs")
 	}
 

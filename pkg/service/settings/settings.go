@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"github.com/gofiber/fiber/v2/log"
 	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/mongo/options"
 	"sync"
 	"time"
 )
@@ -112,6 +113,28 @@ func getCommandDescription(ctx context.Context) (model.CommandsDescription, erro
 		return model.CommandsDescription{}, err
 	}
 	return commandsDescription, nil
+}
+
+func AddDefaultSettingsForUser(ctx context.Context, userId string) error {
+	var config vkplay.ChCommand
+	err := DB.GetCollection(DB.UserSettings).FindOne(ctx, bson.M{"_id": "default"}).Decode(&config)
+	if err != nil {
+		log.Error("Error while getting default settings:", err)
+		return err
+	}
+
+	fmt.Println(config)
+	// copy default settings to new user
+	vkplay.ChannelsCommands.Channels[userId] = config
+
+	// save to DB
+	_, err = DB.GetCollection(DB.UserSettings).UpdateByID(ctx, userId, bson.M{"$set": vkplay.ChannelsCommands.Channels[userId]}, options.Update().SetUpsert(true))
+	if err != nil {
+		log.Error("Error whole copying default settings:", err)
+		return err
+	}
+
+	return nil
 }
 
 func AddCommandForUser(ctx context.Context, userId string, command *model.CommonCommand) ([]model.CommonCommand, error) {

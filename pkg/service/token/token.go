@@ -13,11 +13,15 @@ import (
 	"time"
 )
 
-func generateToken(user model.UserDto, secret string, expHour time.Duration) (string, error) {
+const (
+	AccessTokenExpireHour  = 1 //600
+	RefreshTokenExpireHour = 1440
+)
+
+func generateToken(userId string, secret string, expHour time.Duration) (string, error) {
 	claims := jwt.MapClaims{
-		"id":           user.Id,
-		"is_confirmed": user.IsConfirmed,
-		"exp":          time.Now().Add(time.Hour * expHour).Unix(),
+		"id":  userId,
+		"exp": time.Now().Add(time.Hour * expHour).Unix(),
 	}
 
 	// Create token
@@ -28,15 +32,24 @@ func generateToken(user model.UserDto, secret string, expHour time.Duration) (st
 
 	return t, err
 }
-func GenerateTokens(user model.UserDto) (string, string) {
-	accessToken, err := generateToken(user, os.Getenv("JWT_ACCESS_SECRET"), 600)
-	refreshToken, err := generateToken(user, os.Getenv("JWT_REFRESH_SECRET"), 1440)
+func GenerateTokens(userId string) (string, string) {
+	accessToken, err := generateToken(userId, os.Getenv("JWT_ACCESS_SECRET"), AccessTokenExpireHour)
+	refreshToken, err := generateToken(userId, os.Getenv("JWT_REFRESH_SECRET"), RefreshTokenExpireHour)
 
 	if err != nil {
 		log.Error("Generate token error")
 	}
 
 	return accessToken, refreshToken
+}
+
+func GenerateRefreshToken(userId string) string {
+	token, err := generateToken(userId, os.Getenv("JWT_REFRESH_SECRET"), RefreshTokenExpireHour)
+	if err != nil {
+		log.Error("Generate refresh token error")
+		return ""
+	}
+	return token
 }
 
 func isTokenValid(tokenString, secret string) (*model.UserDto, error) {
@@ -63,7 +76,7 @@ func ValidateRefreshToken(token string) (*model.UserDto, error) {
 	return isTokenValid(token, os.Getenv("JWT_REFRESH_SECRET"))
 }
 
-func SaveToken(ctx context.Context, uid interface{}, refreshToken string) error {
+func SaveToken(ctx context.Context, uid string, refreshToken string) error {
 	colToken := DB.GetCollection(DB.Tokens)
 	var err error
 	filter := bson.M{"user_id": uid}

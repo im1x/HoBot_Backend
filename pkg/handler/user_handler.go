@@ -2,69 +2,19 @@ package handler
 
 import (
 	"HoBot_Backend/pkg/model"
+	"HoBot_Backend/pkg/service/token"
 	userService "HoBot_Backend/pkg/service/user"
+	"HoBot_Backend/pkg/service/vkplay"
+	"fmt"
 	"github.com/go-playground/validator/v10"
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/log"
 	"github.com/golang-jwt/jwt/v5"
+	"os"
 	"time"
 )
 
 var validate = validator.New()
-
-func Register(c *fiber.Ctx) error {
-	user := new(model.User)
-
-	if err := c.BodyParser(&user); err != nil {
-		return fiber.NewError(fiber.StatusBadRequest, err.Error())
-	}
-
-	if err := validate.Struct(user); err != nil {
-		return c.Status(fiber.StatusBadRequest).JSON(err.Error())
-	}
-
-	res, err := userService.Registration(c.Context(), *user)
-	if err != nil {
-		log.Info(err)
-		return err
-	}
-
-	cookie := new(fiber.Cookie)
-	cookie.Name = "refreshToken"
-	cookie.Value = res.RefreshToken
-	cookie.Expires = time.Now().Add(1440 * time.Hour)
-	cookie.HTTPOnly = true
-	cookie.SameSite = "None"
-	c.Cookie(cookie)
-
-	return c.JSON(res)
-}
-
-func Login(c *fiber.Ctx) error {
-	user := new(model.User)
-
-	if err := c.BodyParser(&user); err != nil {
-		return fiber.NewError(fiber.StatusBadRequest, err.Error())
-	}
-
-	if err := validate.Struct(user); err != nil {
-		return c.Status(fiber.StatusBadRequest).JSON(err.Error())
-	}
-
-	res, err := userService.Login(c.Context(), *user)
-	if err != nil {
-		return err
-	}
-
-	cookie := new(fiber.Cookie)
-	cookie.Name = "refreshToken"
-	cookie.Value = res.RefreshToken
-	cookie.Expires = time.Now().Add(1440 * time.Hour)
-	cookie.HTTPOnly = true
-	c.Cookie(cookie)
-
-	return c.JSON(res)
-}
 
 func Logout(c *fiber.Ctx) error {
 	refreshToken := c.Cookies("refreshToken")
@@ -82,23 +32,81 @@ func Logout(c *fiber.Ctx) error {
 }
 
 func Refresh(c *fiber.Ctx) error {
-	refreshToken := c.Cookies("refreshToken")
-	if refreshToken == "" {
+	refreshTokenCookie := c.Cookies("refreshToken")
+	if refreshTokenCookie == "" {
 		return fiber.NewError(fiber.StatusUnauthorized)
 	}
-	res, err := userService.RefreshToken(c.Context(), refreshToken)
+	accessToken, refreshToken, err := userService.RefreshToken(c.Context(), refreshTokenCookie)
 	if err != nil {
 		return err
 	}
 
 	cookie := new(fiber.Cookie)
 	cookie.Name = "refreshToken"
-	cookie.Value = res.RefreshToken
-	cookie.Expires = time.Now().Add(1440 * time.Hour)
+	cookie.Value = refreshToken
+	cookie.Expires = time.Now().Add(token.RefreshTokenExpireHour * time.Hour)
 	cookie.HTTPOnly = true
 	c.Cookie(cookie)
 
-	return c.JSON(res)
+	return c.JSON(model.AccessToken{AccessToken: accessToken})
+}
+
+func VkplAuth(c *fiber.Ctx) error {
+	code := c.Query("code")
+	if code == "" {
+		return fiber.NewError(fiber.StatusUnauthorized)
+	}
+
+	fmt.Println(os.Getenv("CLIENT_URL"))
+	fmt.Println(os.Getenv("CLIENT_AUTH_REDIRECT"))
+
+	// codeToToken
+	accessToken, err := vkplay.CodeToToken(code)
+	if err != nil {
+		return fiber.NewError(fiber.StatusUnauthorized)
+	}
+	fmt.Println(accessToken)
+
+	// getUserInfo
+	userInfo, err := vkplay.GetCurrentUserInfo(accessToken)
+	if err != nil {
+		log.Error("Error while getting user info:", err)
+		return fiber.NewError(fiber.StatusUnauthorized)
+	}
+	fmt.Println(userInfo)
+	// is streamer?
+	if !userInfo.Data.User.IsStreamer {
+		return c.Redirect(os.Getenv("CLIENT_URL") + "?streamer=false")
+	}
+	// yes -> continue
+	// no -> return error
+
+	// is new user?
+
+	refreshToken, err := userService.LoginVkpl(c.Context(), userInfo)
+	if err != nil {
+		log.Error(err)
+		return err
+	}
+
+	cookie := new(fiber.Cookie)
+	cookie.Name = "refreshToken"
+	cookie.Value = refreshToken
+	cookie.Expires = time.Now().Add(token.RefreshTokenExpireHour * time.Hour)
+	cookie.HTTPOnly = true
+	c.Cookie(cookie)
+
+	return c.Redirect(os.Getenv("CLIENT_URL"))
+}
+
+func GetCurrentUser(c *fiber.Ctx) error {
+	userId := parseUserIdFromRequest(c)
+	user, err := userService.GetCurrentUser(c.Context(), userId)
+	if err != nil {
+		log.Error("Error while getting user info:", err)
+		return fiber.NewError(fiber.StatusBadRequest)
+	}
+	return c.JSON(user)
 }
 
 func parseUserIdFromRequest(c *fiber.Ctx) string {
