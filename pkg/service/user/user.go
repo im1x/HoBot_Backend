@@ -157,3 +157,31 @@ func LoginVkpl(ctx context.Context, currentUser model.CurrentUserVkpl) (string, 
 
 	return refreshToken, nil
 }
+
+func WipeUser(ctx context.Context, id string) error {
+	_, err := DB.GetCollection(DB.Users).DeleteOne(ctx, bson.M{"_id": id})
+	if err != nil {
+		log.Error("Error while wiping user [Users]:", err)
+		return err
+	}
+
+	_, err = DB.GetCollection(DB.UserSettings).DeleteOne(ctx, bson.M{"_id": id})
+	if err != nil {
+		log.Error("Error while wiping user [UserSettings]:", err)
+		return err
+	}
+
+	_, err = DB.GetCollection(DB.SongRequests).DeleteMany(ctx, bson.M{"channel_id": id})
+	if err != nil {
+		log.Error("Error while wiping user [SongRequests]:", err)
+		return err
+	}
+
+	err = vkplay.RemoveUserFromWs(id)
+	if err != nil {
+		log.Error("Error while wiping user [WS]:", err)
+		return err
+	}
+
+	return nil
+}

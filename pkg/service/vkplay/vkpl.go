@@ -433,7 +433,7 @@ func AddUserToWs(userId string) error {
 	return nil
 }
 
-func removeUserFromWs(userId string) error {
+func RemoveUserFromWs(userId string) error {
 	// DB
 	wsChannels := getWsChannelsFromDB()
 	for i, v := range wsChannels.ChannelsAutoJoin {

@@ -76,7 +76,7 @@ func VkplAuth(c *fiber.Ctx) error {
 	fmt.Println(userInfo)
 	// is streamer?
 	if !userInfo.Data.User.IsStreamer {
-		return c.Redirect(os.Getenv("CLIENT_URL") + "?streamer=false")
+		return c.Redirect(os.Getenv("CLIENT_URL") + "?s=1")
 	}
 	// yes -> continue
 	// no -> return error
@@ -107,6 +107,17 @@ func GetCurrentUser(c *fiber.Ctx) error {
 		return fiber.NewError(fiber.StatusBadRequest)
 	}
 	return c.JSON(user)
+}
+
+func WipeUser(c *fiber.Ctx) error {
+	userId := parseUserIdFromRequest(c)
+	err := userService.WipeUser(c.Context(), userId)
+	if err != nil {
+		log.Error("Error while wiping user:", err)
+		return err
+	}
+
+	return Logout(c)
 }
 
 func parseUserIdFromRequest(c *fiber.Ctx) string {

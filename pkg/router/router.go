@@ -9,8 +9,7 @@ import (
 
 func Register(app *fiber.App) {
 	api := app.Group("/api")
-	/*	api.Post("/register", handler.Register)
-		api.Post("/login", handler.Login)*/
+
 	api.Post("/logout", handler.Logout)
 	api.Get("/refresh", handler.Refresh)
 	api.Get("/vkpl", handler.VkplAuth)
@@ -26,6 +25,7 @@ func Register(app *fiber.App) {
 	}))
 
 	api.Get("/user", handler.GetCurrentUser)
+	api.Delete("/user/", handler.WipeUser)
 
 	api.Post("/feedback", handler.Feedback)
 
