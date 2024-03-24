@@ -35,7 +35,7 @@ func GetVideoInfo(id string) (VideoInfo, error) {
 	matchJsonRegex, _ := regexp.Compile("var ytInitialPlayerResponse = .+?;</script>")
 	b, err := io.ReadAll(resp.Body)
 	if err != nil {
-		fmt.Println("read failed")
+		log.Error("YT read failed:", err)
 	}
 
 	jsonFromBody := matchJsonRegex.FindString(string(b))
@@ -73,6 +73,5 @@ func ExtractVideoID(url string) (string, error) {
 	if len(match) < 2 {
 		return "", fmt.Errorf("unable to extract video ID from the URL")
 	}
-	fmt.Println(match)
 	return match[1], nil
 }

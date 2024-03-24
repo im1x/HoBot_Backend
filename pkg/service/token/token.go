@@ -14,7 +14,7 @@ import (
 )
 
 const (
-	AccessTokenExpireHour  = 1 //600
+	AccessTokenExpireHour  = 1
 	RefreshTokenExpireHour = 1440
 )
 

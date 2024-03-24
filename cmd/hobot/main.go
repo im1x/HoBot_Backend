@@ -46,11 +46,7 @@ func main() {
 	} else {
 		app = fiber.New()
 	}
-	/*app.Use(cors.New(cors.Config{
-		AllowCredentials: true,
-		MaxAge:           600,
-		AllowOrigins:     "http://localhost:5173",
-	}))*/
+
 	router.Register(app)
 
 	go socketio.Start()

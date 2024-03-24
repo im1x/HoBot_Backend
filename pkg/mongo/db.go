@@ -25,7 +25,6 @@ var ctx = context.TODO()
 var DB *mongo.Client = nil
 
 func Connect() {
-	log.Println(os.Getenv("MONGODB_URI"))
 	clientOptions := options.Client().ApplyURI(os.Getenv("MONGODB_URI"))
 	client, err := mongo.Connect(ctx, clientOptions)
 	if err != nil {

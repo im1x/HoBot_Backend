@@ -60,7 +60,7 @@ func refreshVkplToken() error {
 		"failure":              {"https://account.vkplay.ru/oauth2/login/?continue=https%3A%2F%2Faccount.vkplay.ru%2Foauth2%2Flogin%2F%3Fcontinue%3Dhttps%253A%252F%252Faccount.vkplay.ru%252Foauth2%252F%253Fclient_id%253Dvkplay.live%2526response_type%253Dcode%2526skip_grants%253D1%2526state%253D%25257B%252522unregId%252522%25253A%252522streams_web%25253A75c4625e-0231-466c-a023-74db07d45ea0%252522%25252C%252522from%252522%25253A%252522%252522%25252C%252522redirectAppId%252522%25253A%252522streams_web%252522%25257D%25252A%25252A%25252A-%25252A%25252A%25252Avkplay%2526redirect_uri%253Dhttps%25253A%25252F%25252Fvkplay.live%25252Fapp%25252Foauth_redirect%26client_id%3Dvkplay.live%26lang%3Dru_RU&client_id=vkplay.live&lang=ru_RU"},
 		"g-recaptcha-response": {""},
 	}
-	log.Info(loginData)
+
 	req, err := http.NewRequest("POST", loginURL, bytes.NewBufferString(loginData.Encode()))
 	if err != nil {
 		return err
@@ -73,8 +73,8 @@ func refreshVkplToken() error {
 	if err != nil {
 		return err
 	}
-
 	defer resp.Body.Close()
+
 	urlVkpl, _ := url.Parse("https://vkplay.live")
 	cookies := jar.Cookies(urlVkpl)
 
@@ -90,20 +90,19 @@ func refreshVkplToken() error {
 			validCookie, _ := url.QueryUnescape(cookie.Value)
 			err = json.Unmarshal([]byte(validCookie), &authResponse)
 			if err != nil {
-				fmt.Println("Error decoding auth cookie:", err)
+				log.Error("Error decoding auth cookie:", err)
 				return fmt.Errorf("error decoding auth cookie: %w", err)
 			}
 		}
 	}
 	authResponse.ClientID = tmpClientID
-	log.Info(authResponse)
 
 	authVkpl = authResponse
 	return nil
 }
 
 func saveVkplAuthToDB(auth AuthResponse) error {
-	log.Info("VKPL: Saving vkplay auth")
+	log.Info("VKPL: Saving vkplay auth to DB")
 	ctx, cancel := context.WithTimeout(ctxParent, 3*time.Second)
 	defer cancel()
 	_, err := DB.GetCollection(DB.Vkpl).ReplaceOne(ctx, bson.M{"_id": "auth"}, auth)
@@ -115,7 +114,7 @@ func saveVkplAuthToDB(auth AuthResponse) error {
 }
 
 func getVkplAuthFromDB() (AuthResponse, error) {
-	log.Info("VKPL: Getting vkplay auth from db")
+	log.Info("VKPL: Getting vkplay auth from DB")
 	ctx, cancel := context.WithTimeout(ctxParent, 3*time.Second)
 	defer cancel()
 	var auth AuthResponse
@@ -128,7 +127,6 @@ func getVkplAuthFromDB() (AuthResponse, error) {
 }
 
 func isAuthNeedRefresh() bool {
-	log.Info("VKPL: Checking if auth need refresh")
 	if authVkpl.ExpiresAt < time.Now().Add(time.Minute*10).UnixMilli() {
 		return true
 	}
@@ -202,7 +200,6 @@ func connectWS() error {
 		return fmt.Errorf("ws token is empty")
 	}
 	vkpl.wsToken = wsToken
-	log.Info("WS token: ", wsToken)
 
 	h := http.Header{
 		"Origin": {"https://vkplay.live"},
@@ -221,13 +218,11 @@ func connectWS() error {
 		return err
 	}
 
-	respWsType, respWs, err := vkpl.wsConnect.ReadMessage()
+	_, _, err = vkpl.wsConnect.ReadMessage()
 	if err != nil {
 		log.Error("Error while reading ws message. Check:", err)
 		return err
 	}
-
-	log.Info(`VKPL-from-ws: respWsType %d respWs %s`, respWsType, string(respWs))
 
 	vkpl.wsCounter++
 	err = joinAllChats()
@@ -293,10 +288,8 @@ func listen() {
 			if err != nil {
 				log.Error("Error while reconnecting to ws:", err)
 			}
-			//return
 			continue
 		}
-		//log.Info("VKPL-from-chat: ", string(p))
 		if isPING(p) {
 			SendWSMessage([]byte("{}"))
 		} else {
@@ -304,35 +297,32 @@ func listen() {
 			err = json.Unmarshal(p, &msg)
 			if err != nil {
 				log.Error("Error while unmarshalling ws message:", err)
-				//log.Error("VKPL-from-chat Error: ", string(p))
 
-				// ----------
+				// ---------- Block for printing error ----------
 				dst := &bytes.Buffer{}
 				if err := json.Indent(dst, p, "", "  "); err != nil {
-					panic(err)
+					log.Error(err)
+					//panic(err)
 				}
-
-				fmt.Println(dst.String())
+				log.Error(dst.String())
 				// ----------
 				return
 			}
 
 			if msg.Push.Pub.Data.Type == "message" {
-				from := msg.Push.Pub.Data.Data.User.DisplayName
 				var sb strings.Builder
 
-				//==================
-				empJSON, err := json.MarshalIndent(msg.Push.Pub.Data.Data.Data, "", "  ")
+				//================== Block for printing all data
+				/*empJSON, err := json.MarshalIndent(msg.Push.Pub.Data.Data.Data, "", "  ")
 				if err != nil {
 					log.Fatalf(err.Error())
 				}
 
-				fmt.Printf("All Data: %s\n", string(empJSON))
+				fmt.Printf("All Data: %s\n", string(empJSON))*/
 				//==================
 
 				for _, d := range msg.Push.Pub.Data.Data.Data {
 					var content []interface{}
-					fmt.Printf("Current Data: %+v\n", d)
 
 					if (d.Type == "text" || d.Type == "link") && d.Modificator == "" {
 						err := json.Unmarshal([]byte(d.Content), &content)
@@ -341,16 +331,14 @@ func listen() {
 							// ----------
 							dst := &bytes.Buffer{}
 							if err := json.Indent(dst, p, "", "  "); err != nil {
-								panic(err)
+								log.Error(err)
+								//panic(err)
 							}
-
-							fmt.Println(dst.String())
+							log.Error(dst.String())
 							// ----------
-							//log.Error("VKPL-from-chat Error: ", string(p))
 							return
 
 						}
-						//break
 						sb.WriteString(content[0].(string))
 					}
 				}
@@ -359,29 +347,20 @@ func listen() {
 				if len(trimSb) == 0 {
 					continue
 				}
-				/*					empJSON, err := json.MarshalIndent(msg, "", "  ")
-									if err != nil {
-										log.Fatalf(err.Error())
-									}
-									fmt.Println(string(empJSON))*/
 
-				fmt.Printf("%s: %s\n", from, trimSb)
+				// Print each message
+				//fmt.Printf("%s: %s\n", msg.GetDisplayName(), trimSb)
+
 				alias, param := getAliasAndParamFromMessage(trimSb)
 				if !hasAccess(alias, &msg) {
 					continue
 				}
-				//fmt.Printf("%s | len: %d\n", cmdAndParam, len(cmdAndParam))
-				/*					if len(cmdAndParam) == 1 {
-										fmt.Printf("%s\n", cmdAndParam[0])
-									} else {
-										fmt.Printf("%s: %s\n", cmdAndParam[0], cmdAndParam[1])
-									}*/
+
 				cmd, payload := getCommandAndPayloadForAlias(alias, msg.GetChannelId())
 				if cmd != "" {
 					if payload != "" {
 						param = payload
 					}
-					fmt.Println(cmd)
 					Commands[cmd].Handler(&msg, param)
 				}
 			}
@@ -494,9 +473,7 @@ func getCommandsFromDB() {
 		}
 	}
 
-	//ChannelsCommands = cmds
 	ChannelsCommands = cmds
-	fmt.Println(ChannelsCommands)
 }
 
 func SendMessageToChannel(msgText string, channel string, mention *User) {
@@ -578,7 +555,7 @@ func SendMessageToChannel(msgText string, channel string, mention *User) {
 
 	if resp.StatusCode != 200 {
 		rd, _ := io.ReadAll(resp.Body)
-		log.Info(string(rd))
+		log.Error(string(rd))
 	}
 }
 

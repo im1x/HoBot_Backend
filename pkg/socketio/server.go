@@ -13,8 +13,6 @@ var io *socket.Server
 type SocketEvent string
 
 const (
-	SendData             SocketEvent = "SendData"
-	TestEvent            SocketEvent = "TestEvent"
 	SongRequestAdded     SocketEvent = "SongRequestAdded"
 	SongRequestSetVolume SocketEvent = "SongRequestSetVolume"
 	SongRequestSkipSong  SocketEvent = "SongRequestSkipSong"
@@ -26,21 +24,16 @@ func Start() {
 
 	serverOptions := socket.DefaultServerOptions()
 	cors := &types.Cors{
-		Origin:         "*",            // Replace with your allowed origin(s)
-		Methods:        "GET,POST",     // Replace with your allowed HTTP methods
-		AllowedHeaders: "Content-Type", // Replace with your allowed headers
-		//ExposedHeaders:       "",             // Replace with your exposed headers
-		//MaxAge:      "1",  // Replace with your max age
-		Credentials: true, // Set to true if you want to allow credentials (cookies, etc.)
-		//PreflightContinue:    false,          // Set to true if you want to continue with preflight requests
-		//OptionsSuccessStatus: 204,            // Replace with your desired status for preflight success
+		Origin:         "*",
+		Methods:        "GET,POST",
+		AllowedHeaders: "Content-Type",
+		Credentials:    true,
 	}
 
 	serverOptions.SetCors(cors)
 	io = socket.NewServer(httpServer, serverOptions)
 
 	io.Use(func(s *socket.Socket, next func(*socket.ExtendedError)) {
-		fmt.Printf("---middleware---\n")
 		auth := s.Handshake().Auth
 		if auth == nil {
 			next(socket.NewExtendedError("Unauthorized: auth not found", "401"))
@@ -56,15 +49,12 @@ func Start() {
 			next(socket.NewExtendedError("Unauthorized: invalid token", "401"))
 			return
 		}
-		// --- TEMP ---
 		s.Join(socket.Room(userDto.Id))
-		//s.Join(socket.Room(userDto.Id.Hex()))
-		fmt.Printf("Rooms: %v\n", s.Rooms())
 
 		next(nil)
 	})
 
-	io.On("connection", func(clients ...any) {
+	/*	io.On("connection", func(clients ...any) {
 		client := clients[0].(*socket.Socket)
 
 		client.On("event", func(datas ...any) {
@@ -82,7 +72,7 @@ func Start() {
 		client.On("disconnect", func(...any) {
 			fmt.Printf("disconnect %v\n", client.Id())
 		})
-	})
+	})*/
 	fmt.Println(" ┌───────────────────────────────────────────────────┐ ")
 	fmt.Print(" │       Socket.IO Server running on port: " + os.Getenv("WS_PORT") + "      │ ")
 	httpServer.Listen(":"+os.Getenv("WS_PORT"), nil)

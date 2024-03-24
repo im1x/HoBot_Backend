@@ -3,10 +3,8 @@ package handler
 import (
 	"HoBot_Backend/pkg/model"
 	"HoBot_Backend/pkg/service/settings"
-	"fmt"
 	"github.com/gofiber/fiber/v2"
 	"net/url"
-	"time"
 )
 
 func GetCommands(c *fiber.Ctx) error {
@@ -18,17 +16,7 @@ func GetCommands(c *fiber.Ctx) error {
 	return c.JSON(commands)
 }
 func GetCommandsDropdown(c *fiber.Ctx) error {
-	// Record start time
-	startTime := time.Now()
-
 	commandsList, err := settings.GetCommandsList()
-
-	// Record end time
-	endTime := time.Now()
-	// Calculate and print the execution time in milliseconds
-	executionTime := endTime.Sub(startTime).Milliseconds()
-	fmt.Printf("Function execution time: %d ms\n", executionTime)
-
 	if err != nil {
 		return fiber.NewError(fiber.StatusInternalServerError, err.Error())
 	}
@@ -46,8 +34,6 @@ func AddCommandAndAlias(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusBadRequest).JSON(err.Error())
 	}
 	userId := parseUserIdFromRequest(c)
-
-	fmt.Println("userId: ", userId)
 
 	commandList, err := settings.AddCommandForUser(c.Context(), userId, newCommand)
 	if err != nil {

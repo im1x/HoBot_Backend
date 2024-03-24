@@ -28,9 +28,10 @@ func AddSongRequestToDB(songRequest SongRequest) error {
 }
 
 func GetPlaylist(ctxReq context.Context, user string) ([]SongRequest, error) {
-	ctx, cancel := context.WithTimeout(ctxReq, 3*time.Second)
 	var playlist []SongRequest
+	ctx, cancel := context.WithTimeout(ctxReq, 3*time.Second)
 	defer cancel()
+
 	cursor, err := DB.GetCollection(DB.SongRequests).Find(ctx, bson.M{"channel_id": user})
 	if err != nil {
 		log.Error("Error while finding song request:", err)

@@ -5,7 +5,6 @@ import (
 	"HoBot_Backend/pkg/service/token"
 	userService "HoBot_Backend/pkg/service/user"
 	"HoBot_Backend/pkg/service/vkplay"
-	"fmt"
 	"github.com/go-playground/validator/v10"
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/log"
@@ -57,15 +56,11 @@ func VkplAuth(c *fiber.Ctx) error {
 		return fiber.NewError(fiber.StatusUnauthorized)
 	}
 
-	fmt.Println(os.Getenv("CLIENT_URL"))
-	fmt.Println(os.Getenv("CLIENT_AUTH_REDIRECT"))
-
 	// codeToToken
 	accessToken, err := vkplay.CodeToToken(code)
 	if err != nil {
 		return fiber.NewError(fiber.StatusUnauthorized)
 	}
-	fmt.Println(accessToken)
 
 	// getUserInfo
 	userInfo, err := vkplay.GetCurrentUserInfo(accessToken)

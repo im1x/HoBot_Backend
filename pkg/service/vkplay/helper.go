@@ -7,7 +7,7 @@ import (
 )
 
 func isPING(data []byte) bool {
-	if len(data) != 2 { // Check the length first
+	if len(data) != 2 {
 		return false
 	}
 	return data[0] == '{' && data[1] == '}'

@@ -15,69 +15,6 @@ import (
 	"strconv"
 )
 
-var ctxParent = context.Background()
-
-/*func Registration(ctx context.Context, user model.User) (*model.UserData, error) {
-	if user.Login == "" || user.Password == "" {
-		return nil, fiber.NewError(fiber.StatusConflict, "login or password is empty")
-	}
-	colUser := DB.GetCollection(DB.Users)
-
-	candidate := colUser.FindOne(ctx, bson.M{"login": user.Login})
-	if !errors.Is(candidate.Err(), mongo.ErrNoDocuments) {
-		return nil, fiber.NewError(fiber.StatusUnauthorized, "login already used")
-	}
-
-	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(user.Password+user.Login), bcrypt.DefaultCost)
-	user.Password = string(hashedPassword)
-
-	// --- TEMP ---
-	user.Id = "18591758"
-	res, err := colUser.InsertOne(ctx, user)
-	userDto := user.ToUserDto()
-	// --- TEMP ---
-	userDto.Id = res.InsertedID.(string)
-	//userDto.Id = res.InsertedID.(primitive.ObjectID)
-
-	accessToken, refreshToken := tokenService.GenerateTokens(userDto)
-	err = tokenService.SaveToken(ctx, res.InsertedID, refreshToken)
-	if err != nil {
-		return nil, err
-	}
-
-	resData := model.UserData{AccessToken: accessToken, RefreshToken: refreshToken, User: userDto}
-
-	return &resData, err
-}
-
-func Login(ctx context.Context, user model.User) (*model.UserData, error) {
-	if user.Login == "" || user.Password == "" {
-		return nil, fiber.NewError(fiber.StatusConflict, "login or password is empty")
-	}
-
-	var userDb = model.User{}
-	err := DB.GetCollection(DB.Users).FindOne(ctx, bson.M{"login": user.Login}).Decode(&userDb)
-	if err != nil {
-		return nil, fiber.NewError(fiber.StatusUnauthorized, "login or password incorrect")
-	}
-	err = bcrypt.CompareHashAndPassword([]byte(userDb.Password), []byte(user.Password+user.Login))
-	if err != nil {
-		return nil, fiber.NewError(fiber.StatusUnauthorized, "login or password incorrect2")
-	}
-
-	userDto := userDb.ToUserDto()
-
-	accessToken, refreshToken := tokenService.GenerateTokens(userDto)
-	err = tokenService.SaveToken(ctx, userDb.Id, refreshToken)
-	if err != nil {
-		return nil, err
-	}
-
-	resData := model.UserData{AccessToken: accessToken, RefreshToken: refreshToken, User: userDto}
-
-	return &resData, err
-}*/
-
 func GetCurrentUser(ctx context.Context, id string) (model.User, error) {
 	var user model.User
 	err := DB.GetCollection(DB.Users).FindOne(ctx, bson.M{"_id": id}).Decode(&user)

@@ -5,7 +5,6 @@ import (
 	DB "HoBot_Backend/pkg/mongo"
 	"HoBot_Backend/pkg/service/vkplay"
 	"context"
-	"fmt"
 	"github.com/gofiber/fiber/v2/log"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo/options"
@@ -72,21 +71,19 @@ func GetCommandsList() (*model.CommandList, error) {
 			if !ok {
 				commandsListCh = nil
 			} else {
-				fmt.Println("Received commandsList:", commandsList)
 				commandsListResult = commandsList
 			}
 		case descriptions, ok := <-descriptionCh:
 			if !ok {
 				descriptionCh = nil
 			} else {
-				fmt.Println("Received descriptions:", descriptions)
 				descriptionResult = descriptions
 			}
 		case err, ok := <-errCh:
 			if !ok {
 				errCh = nil
 			} else {
-				fmt.Println("Error:", err)
+				log.Error("Error:", err)
 				errResult = err
 			}
 		}
@@ -96,8 +93,6 @@ func GetCommandsList() (*model.CommandList, error) {
 			break
 		}
 	}
-	fmt.Println("All Queries Completed")
-	fmt.Println("Result:", commandsListResult, descriptionResult, errResult)
 	if errResult != nil {
 		return nil, errResult
 	}
@@ -109,7 +104,7 @@ func getCommandDescription(ctx context.Context) (model.CommandsDescription, erro
 	var commandsDescription model.CommandsDescription
 	err := DB.GetCollection(DB.SettingsOptions).FindOne(ctx, bson.M{"_id": "commandsDescription"}).Decode(&commandsDescription)
 	if err != nil {
-		fmt.Println(err)
+		log.Error("Error while getting command description:", err)
 		return model.CommandsDescription{}, err
 	}
 	return commandsDescription, nil
@@ -146,8 +141,7 @@ func AddCommandForUser(ctx context.Context, userId string, command *model.Common
 		AccessLevel: command.AccessLevel,
 		Payload:     command.Payload,
 	}
-	fmt.Println(vkplay.ChannelsCommands.Channels[userId].Aliases)
-	fmt.Println(ctx)
+
 	_, err := DB.GetCollection(DB.UserSettings).UpdateByID(ctx, userId, bson.M{"$set": bson.M{"aliases": vkplay.ChannelsCommands.Channels[userId].Aliases}})
 	if err != nil {
 		log.Error("Error while updating aliases:", err)
