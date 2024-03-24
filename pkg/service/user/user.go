@@ -142,7 +142,7 @@ func LoginVkpl(ctx context.Context, currentUser model.CurrentUserVkpl) (string, 
 			log.Error(err)
 			return "", err
 		}
-		err = settingsService.AddDefaultSettingsForUser(ctx, user.Id)
+		err = settingsService.AddDefaultSettingsForUser(ctx, user)
 		if err != nil {
 			log.Error(err)
 			return "", err

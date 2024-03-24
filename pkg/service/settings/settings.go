@@ -115,7 +115,7 @@ func getCommandDescription(ctx context.Context) (model.CommandsDescription, erro
 	return commandsDescription, nil
 }
 
-func AddDefaultSettingsForUser(ctx context.Context, userId string) error {
+func AddDefaultSettingsForUser(ctx context.Context, user model.User) error {
 	var config vkplay.ChCommand
 	err := DB.GetCollection(DB.UserSettings).FindOne(ctx, bson.M{"_id": "default"}).Decode(&config)
 	if err != nil {
@@ -123,12 +123,15 @@ func AddDefaultSettingsForUser(ctx context.Context, userId string) error {
 		return err
 	}
 
-	fmt.Println(config)
+	alias := config.Aliases["!пл"]
+	alias.Payload = alias.Payload + user.Channel
+	config.Aliases["!пл"] = alias
+
 	// copy default settings to new user
-	vkplay.ChannelsCommands.Channels[userId] = config
+	vkplay.ChannelsCommands.Channels[user.Id] = config
 
 	// save to DB
-	_, err = DB.GetCollection(DB.UserSettings).UpdateByID(ctx, userId, bson.M{"$set": vkplay.ChannelsCommands.Channels[userId]}, options.Update().SetUpsert(true))
+	_, err = DB.GetCollection(DB.UserSettings).UpdateByID(ctx, user.Id, bson.M{"$set": vkplay.ChannelsCommands.Channels[user.Id]}, options.Update().SetUpsert(true))
 	if err != nil {
 		log.Error("Error whole copying default settings:", err)
 		return err

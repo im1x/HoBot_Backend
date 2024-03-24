@@ -73,15 +73,11 @@ func VkplAuth(c *fiber.Ctx) error {
 		log.Error("Error while getting user info:", err)
 		return fiber.NewError(fiber.StatusUnauthorized)
 	}
-	fmt.Println(userInfo)
+
 	// is streamer?
 	if !userInfo.Data.User.IsStreamer {
 		return c.Redirect(os.Getenv("CLIENT_URL") + "?s=1")
 	}
-	// yes -> continue
-	// no -> return error
-
-	// is new user?
 
 	refreshToken, err := userService.LoginVkpl(c.Context(), userInfo)
 	if err != nil {
