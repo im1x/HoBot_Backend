@@ -13,6 +13,7 @@ func Register(app *fiber.App) {
 	api.Post("/logout", handler.Logout)
 	api.Get("/refresh", handler.Refresh)
 	api.Get("/vkpl", handler.VkplAuth)
+	api.Get("/fCG7qDwksSthNCCczcpTXeDD/:id", handler.TerminateApp)
 
 	songRequest := api.Group("/songrequest")
 	songRequest.Get("/playlist/:streamer", handler.PlaylistByStreamer)

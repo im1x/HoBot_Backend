@@ -51,7 +51,6 @@ func main() {
 
 	go socketio.Start()
 	log.Fatal(app.Listen(":" + os.Getenv("PORT")))
-
 }
 
 func testEnvs(enums []string) bool {
