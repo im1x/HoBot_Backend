@@ -56,7 +56,7 @@ func GetPlaylist(ctxReq context.Context, user string) ([]SongRequest, error) {
 }
 
 func GetUserIdByName(user string) (string, error) {
-	req, err := http.NewRequest("GET", fmt.Sprintf("https://api.vkplay.live/v1/blog/%s/public_video_stream/chat/user/", user), nil)
+	req, err := http.NewRequest("GET", fmt.Sprintf("https://api.live.vkplay.ru/v1/blog/%s/public_video_stream/chat/user/", user), nil)
 	if err != nil {
 		log.Error("Error while getting user id by name:", err)
 	}

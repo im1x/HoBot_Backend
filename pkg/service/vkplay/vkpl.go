@@ -56,8 +56,8 @@ func refreshVkplToken() error {
 	loginData := url.Values{
 		"login":                {os.Getenv("VKPL_LOGIN")},
 		"password":             {os.Getenv("VKPL_PASSWORD")},
-		"continue":             {"https://account.vkplay.ru/oauth2/?client_id=vkplay.live&response_type=code&skip_grants=1&state=%7B%22unregId%22%3A%22streams_web%3A75c4625e-0231-466c-a023-74db07d45ea0%22%2C%22from%22%3A%22%22%2C%22redirectAppId%22%3A%22streams_web%22%7D%2A%2A%2A-%2A%2A%2Avkplay&redirect_uri=https%3A%2F%2Fvkplay.live%2Fapp%2Foauth_redirect"},
-		"failure":              {"https://account.vkplay.ru/oauth2/login/?continue=https%3A%2F%2Faccount.vkplay.ru%2Foauth2%2Flogin%2F%3Fcontinue%3Dhttps%253A%252F%252Faccount.vkplay.ru%252Foauth2%252F%253Fclient_id%253Dvkplay.live%2526response_type%253Dcode%2526skip_grants%253D1%2526state%253D%25257B%252522unregId%252522%25253A%252522streams_web%25253A75c4625e-0231-466c-a023-74db07d45ea0%252522%25252C%252522from%252522%25253A%252522%252522%25252C%252522redirectAppId%252522%25253A%252522streams_web%252522%25257D%25252A%25252A%25252A-%25252A%25252A%25252Avkplay%2526redirect_uri%253Dhttps%25253A%25252F%25252Fvkplay.live%25252Fapp%25252Foauth_redirect%26client_id%3Dvkplay.live%26lang%3Dru_RU&client_id=vkplay.live&lang=ru_RU"},
+		"continue":             {"https://account.vkplay.ru/oauth2/?client_id=vkplay.live&response_type=code&skip_grants=1&state=%7B%22unregId%22%3A%22streams_web%3A75c4625e-0231-466c-a023-74db07d45ea0%22%2C%22from%22%3A%22%22%2C%22redirectAppId%22%3A%22streams_web%22%7D%2A%2A%2A-%2A%2A%2Avkplay&redirect_uri=https%3A%2F%2Flive.vkplay.ru%2Fapp%2Foauth_redirect"},
+		"failure":              {"https://account.vkplay.ru/oauth2/login/?continue=https%3A%2F%2Faccount.vkplay.ru%2Foauth2%2Flogin%2F%3Fcontinue%3Dhttps%253A%252F%252Faccount.vkplay.ru%252Foauth2%252F%253Fclient_id%253Dlive.vkplay.ru%2526response_type%253Dcode%2526skip_grants%253D1%2526state%253D%25257B%252522unregId%252522%25253A%252522streams_web%25253A75c4625e-0231-466c-a023-74db07d45ea0%252522%25252C%252522from%252522%25253A%252522%252522%25252C%252522redirectAppId%252522%25253A%252522streams_web%252522%25257D%25252A%25252A%25252A-%25252A%25252A%25252Avkplay%2526redirect_uri%253Dhttps%25253A%25252F%25252Flive.vkplay.ru%25252Fapp%25252Foauth_redirect%26client_id%3Dlive.vkplay.ru%26lang%3Dru_RU&client_id=live.vkplay.ru&lang=ru_RU"},
 		"g-recaptcha-response": {""},
 	}
 
@@ -75,7 +75,7 @@ func refreshVkplToken() error {
 	}
 	defer resp.Body.Close()
 
-	urlVkpl, _ := url.Parse("https://vkplay.live")
+	urlVkpl, _ := url.Parse("https://live.vkplay.ru")
 	cookies := jar.Cookies(urlVkpl)
 
 	var authResponse AuthResponse
@@ -165,14 +165,14 @@ func getWsToken() string {
 		return ""
 	}
 
-	req, err := http.NewRequest("GET", "https://api.vkplay.live/v1/ws/connect", nil)
+	req, err := http.NewRequest("GET", "https://api.live.vkplay.ru/v1/ws/connect", nil)
 	if err != nil {
 		return ""
 	}
 	req.Header.Add("Authorization", "Bearer "+authVkplToken)
 	req.Header.Add("X-From-Id", authVkpl.ClientID)
-	req.Header.Add("Origin", "https://vkplay.live")
-	req.Header.Add("Referer", "https://vkplay.live/")
+	req.Header.Add("Origin", "https://live.vkplay.ru")
+	req.Header.Add("Referer", "https://live.vkplay.ru/")
 
 	client := &http.Client{}
 	resp, err := client.Do(req)
@@ -202,9 +202,9 @@ func connectWS() error {
 	vkpl.wsToken = wsToken
 
 	h := http.Header{
-		"Origin": {"https://vkplay.live"},
+		"Origin": {"https://live.vkplay.ru"},
 	}
-	wsCon, resp, err := websocket.DefaultDialer.Dial("wss://pubsub.vkplay.live/connection/websocket?cf_protocol_version=v2", h)
+	wsCon, resp, err := websocket.DefaultDialer.Dial("wss://pubsub.live.vkplay.ru/connection/websocket?cf_protocol_version=v2", h)
 	if err != nil {
 		log.Error("Error while connecting to ws: %d", resp.StatusCode)
 		return err
@@ -533,14 +533,14 @@ func SendMessageToChannel(msgText string, channel string, mention *User) {
 	body := strings.NewReader("data=" + string(b))
 
 	// Creating and sending the request
-	req, err := http.NewRequest("POST", fmt.Sprintf("https://api.vkplay.live/v1/blog/%s/public_video_stream/chat", channel), body)
+	req, err := http.NewRequest("POST", fmt.Sprintf("https://api.live.vkplay.ru/v1/blog/%s/public_video_stream/chat", channel), body)
 	if err != nil {
 		log.Error("Error while sending message to channel:", err)
 		return
 	}
 
-	req.Header.Add("Origin", "https://vkplay.live")
-	req.Header.Add("Referer", fmt.Sprintf("https://vkplay.live/%s", channel))
+	req.Header.Add("Origin", "https://live.vkplay.ru")
+	req.Header.Add("Referer", fmt.Sprintf("https://live.vkplay.ru/%s", channel))
 	req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
 	req.Header.Add("Authorization", "Bearer "+GetVkplToken())
 	req.Header.Add("X-From-Id", authVkpl.ClientID)
@@ -560,7 +560,7 @@ func SendMessageToChannel(msgText string, channel string, mention *User) {
 }
 
 func CodeToToken(code string) (string, error) {
-	reqUrl := "https://api.vkplay.live/oauth/server/token"
+	reqUrl := "https://api.live.vkplay.ru/oauth/server/token"
 	reqData := url.Values{
 		"code":         {code},
 		"grant_type":   {"authorization_code"},
@@ -595,7 +595,7 @@ func CodeToToken(code string) (string, error) {
 }
 
 func GetCurrentUserInfo(accessToken string) (model.CurrentUserVkpl, error) {
-	req, err := http.NewRequest("GET", "https://apidev.vkplay.live/v1/current_user", nil)
+	req, err := http.NewRequest("GET", "https://apidev.live.vkplay.ru/v1/current_user", nil)
 	if err != nil {
 		return model.CurrentUserVkpl{}, err
 	}
