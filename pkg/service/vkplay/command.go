@@ -98,13 +98,13 @@ func srSetVolume(msg *ChatMsg, param string) {
 		return
 	}
 
-	socketio.Emit(msg.GetChannelId(), socketio.SongRequestSetVolume, param)
 	vol, err := strconv.Atoi(param)
 	if err != nil {
 		return
 	}
 	vol = max(0, min(vol, 100))
 
+	socketio.Emit(msg.GetChannelId(), socketio.SongRequestSetVolume, param)
 	SendMessageToChannel(fmt.Sprintf("Громкость реквестов установлена на %v%%", vol), msg.GetChannelId(), nil)
 }
 
