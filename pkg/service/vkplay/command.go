@@ -66,6 +66,11 @@ func srAdd(msg *ChatMsg, param string) {
 		return
 	}
 
+	if info.Views < 2000 {
+		SendMessageToChannel("Слишком мало просмотров у видео", msg.GetChannelId(), msg.GetUser())
+		return
+	}
+
 	var sr = songRequest.SongRequest{
 		ChannelId: msg.GetChannelId(),
 		By:        msg.GetDisplayName(),
