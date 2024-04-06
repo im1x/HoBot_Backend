@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"regexp"
 	"strconv"
+	"strings"
 )
 
 func GetVideoInfo(id string) (VideoInfo, error) {
@@ -43,10 +44,17 @@ func GetVideoInfo(id string) (VideoInfo, error) {
 
 	var videoInfo VideoInfo
 
-	//get title and duration
+	// get title and duration
 	re := regexp.MustCompile(regexp.QuoteMeta(`"title":"`) + "(.*?)" + regexp.QuoteMeta(`","lengthSeconds":"`) + "(.*?)" + regexp.QuoteMeta(`"`))
 	matches := re.FindStringSubmatch(jsonFromBody)
-	videoInfo.Title = matches[1]
+
+	// unquote title
+	if strings.Contains(matches[1], `\"`) {
+		videoInfo.Title = strings.ReplaceAll(matches[1], `\"`, `"`)
+	} else {
+		videoInfo.Title = matches[1]
+	}
+	
 	duration, err := strconv.Atoi(matches[2])
 	if err != nil {
 		log.Error("YT duration parse failed:", err)
