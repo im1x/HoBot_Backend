@@ -3,6 +3,7 @@ package user
 import (
 	"HoBot_Backend/pkg/model"
 	DB "HoBot_Backend/pkg/mongo"
+	"HoBot_Backend/pkg/service/chat"
 	settingsService "HoBot_Backend/pkg/service/settings"
 	tokenService "HoBot_Backend/pkg/service/token"
 	"HoBot_Backend/pkg/service/vkplay"
@@ -31,7 +32,7 @@ func RefreshToken(ctx context.Context, refreshToken string) (string, string, err
 		return "", "", err
 	}
 
-	token, _ := tokenService.FindToken(ctx, refreshToken)
+	token, err := tokenService.FindToken(ctx, refreshToken)
 	if err != nil || token == nil {
 		return "", "", fiber.NewError(fiber.StatusUnauthorized)
 	}
@@ -53,10 +54,7 @@ func RefreshToken(ctx context.Context, refreshToken string) (string, string, err
 
 func isUserAlreadyExist(ctx context.Context, id string) bool {
 	candidate := DB.GetCollection(DB.Users).FindOne(ctx, bson.M{"_id": id})
-	if errors.Is(candidate.Err(), mongo.ErrNoDocuments) {
-		return true
-	}
-	return false
+	return errors.Is(candidate.Err(), mongo.ErrNoDocuments)
 }
 
 func LoginVkpl(ctx context.Context, currentUser model.CurrentUserVkpl) (string, error) {
@@ -74,7 +72,7 @@ func LoginVkpl(ctx context.Context, currentUser model.CurrentUserVkpl) (string, 
 	}
 
 	if isNewUser {
-		err := vkplay.AddUserToWs(user.Id)
+		err := chat.AddUserToWs(user.Id)
 		if err != nil {
 			log.Error(err)
 			return "", err
@@ -114,7 +112,7 @@ func WipeUser(ctx context.Context, id string) error {
 		return err
 	}
 
-	err = vkplay.RemoveUserFromWs(id)
+	err = chat.RemoveUserFromWs(id)
 	if err != nil {
 		log.Error("Error while wiping user [WS]:", err)
 		return err

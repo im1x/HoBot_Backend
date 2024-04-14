@@ -3,6 +3,7 @@ package main
 import (
 	"HoBot_Backend/pkg/mongo"
 	"HoBot_Backend/pkg/router"
+	"HoBot_Backend/pkg/service/chat"
 	"HoBot_Backend/pkg/service/vkplay"
 	"HoBot_Backend/pkg/socketio"
 	"context"
@@ -28,7 +29,8 @@ func main() {
 		"WS_PORT",
 		"VKPL_LOGIN",
 		"VKPL_PASSWORD",
-		"VKPL_APP_CREDEANTIALS"}); !ok {
+		"VKPL_APP_CREDEANTIALS",
+		"BOT_VKPL_ID"}); !ok {
 		log.Fatalln("Please add required envs")
 	}
 
@@ -36,6 +38,7 @@ func main() {
 
 	ctx := context.Background()
 	vkplay.Start(ctx)
+	chat.Start()
 
 	//Http server
 	var app *fiber.App

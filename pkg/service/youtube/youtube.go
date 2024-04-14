@@ -12,6 +12,10 @@ import (
 
 func GetVideoInfo(id string) (VideoInfo, error) {
 	req, err := http.NewRequest("GET", "https://www.youtube.com/watch?v="+id, nil)
+	if err != nil {
+		log.Error("Error while getting YT video info:", err)
+		return VideoInfo{}, err
+	}
 	req.Header.Add("sec-ch-ua", " Not A;Brand\";v=\"99\", \"Chromium\";v=\"102\", \"Google Chrome\";v=\"102")
 	req.Header.Add("sec-ch-ua-mobile", "?0")
 	req.Header.Add("upgrade-insecure-requests", "1")
@@ -54,7 +58,7 @@ func GetVideoInfo(id string) (VideoInfo, error) {
 	} else {
 		videoInfo.Title = matches[1]
 	}
-	
+
 	duration, err := strconv.Atoi(matches[2])
 	if err != nil {
 		log.Error("YT duration parse failed:", err)

@@ -1,6 +1,7 @@
-package vkplay
+package chat
 
 import (
+	"HoBot_Backend/pkg/service/vkplay"
 	"fmt"
 	"strings"
 	"time"
@@ -24,7 +25,7 @@ func getAliasAndParamFromMessage(message string) (string, string) {
 	return commandAndParam[0], commandAndParam[1]
 }
 func getCommandAndPayloadForAlias(alias, channel string) (cmd, param string) {
-	if chnl, ok := ChannelsCommands.Channels[channel]; ok {
+	if chnl, ok := vkplay.ChannelsCommands.Channels[channel]; ok {
 		cmd = chnl.Aliases[alias].Command
 		if chnl.Aliases[alias].Payload != "" {
 			param = chnl.Aliases[alias].Payload
@@ -34,7 +35,7 @@ func getCommandAndPayloadForAlias(alias, channel string) (cmd, param string) {
 }
 
 func hasAccess(alias string, msg *ChatMsg) bool {
-	accessLevel := ChannelsCommands.Channels[msg.GetChannelId()].Aliases[alias].AccessLevel
+	accessLevel := vkplay.ChannelsCommands.Channels[msg.GetChannelId()].Aliases[alias].AccessLevel
 	switch accessLevel {
 	case 1:
 		return msg.GetUser().IsChatModerator || msg.GetUser().IsChannelModerator || msg.GetUser().IsOwner

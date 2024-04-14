@@ -3,6 +3,7 @@ package socketio
 import (
 	tokenService "HoBot_Backend/pkg/service/token"
 	"fmt"
+	"github.com/gofiber/fiber/v2/log"
 	"github.com/zishang520/engine.io/types"
 	"github.com/zishang520/socket.io/v2/socket"
 	"os"
@@ -87,5 +88,9 @@ func getParam(mapData any, paramName string) (string, error) {
 }
 
 func Emit(room string, event SocketEvent, data any) {
-	io.In(socket.Room(room)).Emit(string(event), data)
+	err := io.In(socket.Room(room)).Emit(string(event), data)
+	if err != nil {
+		log.Error("Error while emitting event:", err)
+		return
+	}
 }

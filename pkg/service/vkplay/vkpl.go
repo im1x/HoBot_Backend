@@ -8,7 +8,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/gofiber/fiber/v2/log"
-	"github.com/gorilla/websocket"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
@@ -17,28 +16,187 @@ import (
 	"net/http/cookiejar"
 	"net/url"
 	"os"
-	"regexp"
-	"strings"
 	"time"
 )
 
 var (
-	vkpl             Vkpl
-	authVkpl         AuthResponse
-	ctxParent        context.Context
+	AuthVkpl         AuthResponse
 	ChannelsCommands = ChannelCommands{
 		Channels: make(map[string]ChCommand),
 	}
+	ctxParent context.Context
 )
 
 func Start(ctx context.Context) {
 	ctxParent = ctx
-	err := connectWS()
-	if err != nil {
-		log.Error(err)
-	}
-	go listen()
 	getCommandsFromDB()
+}
+
+func GetVkplToken() string {
+	if AuthVkpl == (AuthResponse{}) {
+		authFromDB, err := getVkplAuthFromDB()
+		if err != nil {
+			log.Error("Error while getting vkplay auth from db:", err)
+			return ""
+		}
+		AuthVkpl = authFromDB
+	}
+
+	if AuthVkpl == (AuthResponse{}) || isAuthNeedRefresh() {
+		err := refreshVkplToken()
+		if err != nil {
+			log.Error("Error while refreshing vkplay token:", err)
+			return ""
+		}
+		err = saveVkplAuthToDB(AuthVkpl)
+		if err != nil {
+			log.Error("Error while saving vkplay auth to db:", err)
+			return ""
+		}
+
+	}
+	return AuthVkpl.AccessToken
+}
+
+func GetWsChannelsFromDB() Config {
+	var config Config
+	ctx, cancel := context.WithTimeout(ctxParent, 3*time.Second)
+	defer cancel()
+
+	err := DB.GetCollection(DB.Config).FindOne(ctx, bson.M{"_id": "ws"}).Decode(&config)
+	if err != nil {
+		log.Error("Error while getting channels:", err)
+		return Config{}
+	}
+	return config
+}
+
+func SaveWsChannelsToDB(config Config) error {
+	ctx, cancel := context.WithTimeout(ctxParent, 3*time.Second)
+	defer cancel()
+	_, err := DB.GetCollection(DB.Config).UpdateByID(ctx, "ws", bson.M{"$set": config})
+	if err != nil {
+		log.Error("Error while saving channels:", err)
+		return err
+	}
+	return nil
+}
+
+func CodeToToken(code string) (string, error) {
+	reqUrl := "https://api.live.vkplay.ru/oauth/server/token"
+	reqData := url.Values{
+		"code":         {code},
+		"grant_type":   {"authorization_code"},
+		"redirect_uri": {os.Getenv("CLIENT_AUTH_REDIRECT")},
+	}
+
+	req, err := http.NewRequest("POST", reqUrl, bytes.NewBufferString(reqData.Encode()))
+	if err != nil {
+		return "", err
+	}
+
+	req.Header.Set("Authorization", "Basic "+os.Getenv("VKPL_APP_CREDEANTIALS"))
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+
+	client := &http.Client{}
+	resp, err := client.Do(req)
+	if resp.StatusCode != 200 || err != nil {
+		log.Error("Error while changing code to token")
+		return "", err
+	}
+	defer resp.Body.Close()
+
+	b, err := io.ReadAll(resp.Body)
+	if err != nil {
+		log.Error("Error while changing code to token, read body:", err)
+		return "", err
+	}
+
+	var token map[string]interface{}
+	err = json.Unmarshal(b, &token)
+	if err != nil {
+		return "", err
+	}
+	return token["access_token"].(string), nil
+}
+
+func GetCurrentUserInfo(accessToken string) (model.CurrentUserVkpl, error) {
+	req, err := http.NewRequest("GET", "https://apidev.live.vkplay.ru/v1/current_user", nil)
+	if err != nil {
+		return model.CurrentUserVkpl{}, err
+	}
+	req.Header.Add("Authorization", "Bearer "+accessToken)
+	req.Header.Add("Content-Type", "application/json")
+
+	client := &http.Client{}
+	resp, err := client.Do(req)
+	if err != nil {
+		log.Error("Error while getting ws token:", err)
+		return model.CurrentUserVkpl{}, err
+	}
+	defer resp.Body.Close()
+
+	var currentUserVkpl model.CurrentUserVkpl
+	err = json.NewDecoder(resp.Body).Decode(&currentUserVkpl)
+	if err != nil {
+		return model.CurrentUserVkpl{}, err
+	}
+
+	return currentUserVkpl, nil
+}
+
+func InsertOrUpdateUser(ctx context.Context, user model.User) error {
+	log.Info("VKPL: Inserting or updating user")
+	ctx, cancel := context.WithTimeout(ctx, 3*time.Second)
+	defer cancel()
+	_, err := DB.GetCollection(DB.Users).UpdateByID(ctx, user.Id, bson.M{"$set": user}, options.Update().SetUpsert(true))
+	if err != nil {
+		log.Error("Error while inserting or updating user:", err)
+		return err
+	}
+	return nil
+}
+
+func GetChatUserInfo(chatName string, userId string) (ChatUserDetails, error) {
+	req, err := http.NewRequest("GET", fmt.Sprintf("https://apidev.live.vkplay.ru/v1/chat/member?channel_url=%s&user_id=%s", chatName, userId), nil)
+	if err != nil {
+		return ChatUserDetails{}, err
+	}
+
+	req.Header.Set("Authorization", "Basic "+os.Getenv("VKPL_APP_CREDEANTIALS"))
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+
+	client := &http.Client{}
+	resp, err := client.Do(req)
+	if resp.StatusCode != 200 || err != nil {
+		log.Error("Error while getting chat user details:", err)
+		fmt.Println(resp.StatusCode)
+		fmt.Println(err)
+		fmt.Println(resp.Body)
+		b, _ := io.ReadAll(resp.Body)
+		fmt.Println(string(b))
+
+		return ChatUserDetails{}, err
+	}
+	defer resp.Body.Close()
+
+	var user ChatUserDetails
+	err = json.NewDecoder(resp.Body).Decode(&user)
+	if err != nil {
+		log.Error("Error while decoding chat user details:", err)
+		return ChatUserDetails{}, err
+	}
+
+	return user, nil
+}
+
+func IsBotHaveModeratorRights(chatName string) bool {
+	userInfo, err := GetChatUserInfo(chatName, os.Getenv("BOT_VKPL_ID"))
+	if err != nil {
+		log.Error("Error while checking if bot have moderator rights:", err)
+		return false
+	}
+	return userInfo.Data.User.IsModerator
 }
 
 func refreshVkplToken() error {
@@ -97,7 +255,7 @@ func refreshVkplToken() error {
 	}
 	authResponse.ClientID = tmpClientID
 
-	authVkpl = authResponse
+	AuthVkpl = authResponse
 	return nil
 }
 
@@ -127,313 +285,7 @@ func getVkplAuthFromDB() (AuthResponse, error) {
 }
 
 func isAuthNeedRefresh() bool {
-	if authVkpl.ExpiresAt < time.Now().Add(time.Minute*10).UnixMilli() {
-		return true
-	}
-	return false
-}
-
-func GetVkplToken() string {
-	if authVkpl == (AuthResponse{}) {
-		authFromDB, err := getVkplAuthFromDB()
-		if err != nil {
-			log.Error("Error while getting vkplay auth from db:", err)
-			return ""
-		}
-		authVkpl = authFromDB
-	}
-
-	if authVkpl == (AuthResponse{}) || isAuthNeedRefresh() {
-		err := refreshVkplToken()
-		if err != nil {
-			log.Error("Error while refreshing vkplay token:", err)
-			return ""
-		}
-		err = saveVkplAuthToDB(authVkpl)
-		if err != nil {
-			log.Error("Error while saving vkplay auth to db:", err)
-			return ""
-		}
-
-	}
-	return authVkpl.AccessToken
-}
-
-func getWsToken() string {
-	authVkplToken := GetVkplToken()
-	if authVkplToken == "" {
-		return ""
-	}
-
-	req, err := http.NewRequest("GET", "https://api.live.vkplay.ru/v1/ws/connect", nil)
-	if err != nil {
-		return ""
-	}
-	req.Header.Add("Authorization", "Bearer "+authVkplToken)
-	req.Header.Add("X-From-Id", authVkpl.ClientID)
-	req.Header.Add("Origin", "https://live.vkplay.ru")
-	req.Header.Add("Referer", "https://live.vkplay.ru/")
-
-	client := &http.Client{}
-	resp, err := client.Do(req)
-	if err != nil {
-		log.Error("Error while getting ws token:", err)
-		return ""
-	}
-	defer resp.Body.Close()
-
-	b, err := io.ReadAll(resp.Body)
-	if err != nil {
-		log.Error("Error while reading ws token:", err)
-		return ""
-	}
-
-	var token map[string]interface{}
-	json.Unmarshal(b, &token)
-	return token["token"].(string)
-}
-
-func connectWS() error {
-	vkpl.wsCounter = 0
-	wsToken := getWsToken()
-	if wsToken == "" {
-		return fmt.Errorf("ws token is empty")
-	}
-	vkpl.wsToken = wsToken
-
-	h := http.Header{
-		"Origin": {"https://live.vkplay.ru"},
-	}
-	wsCon, resp, err := websocket.DefaultDialer.Dial("wss://pubsub.live.vkplay.ru/connection/websocket?cf_protocol_version=v2", h)
-	if err != nil {
-		log.Error("Error while connecting to ws: %d", resp.StatusCode)
-		return err
-	}
-
-	vkpl.wsConnect = wsCon
-	vkpl.wsCounter++
-	t := fmt.Sprintf(`{"connect":{"token":"%s","name":"js"},"id":%d}`, vkpl.wsToken, vkpl.wsCounter)
-	err = SendWSMessage([]byte(t))
-	if err != nil {
-		return err
-	}
-
-	_, _, err = vkpl.wsConnect.ReadMessage()
-	if err != nil {
-		log.Error("Error while reading ws message. Check:", err)
-		return err
-	}
-
-	vkpl.wsCounter++
-	err = joinAllChats()
-	if err != nil {
-		log.Error("Error while joining chat:", err)
-		return err
-	}
-	return nil
-}
-
-func SendWSMessage(p []byte) error {
-	vkpl.wsCounter++
-	err := vkpl.wsConnect.WriteMessage(websocket.TextMessage, p)
-	if err != nil {
-		log.Error("Error while sending ws message:", err)
-		return err
-	}
-	return nil
-}
-
-func ReadWSMessage() (p []byte, err error) {
-	_, p, err = vkpl.wsConnect.ReadMessage()
-	if err != nil {
-		return nil, err
-	}
-	return p, nil
-}
-
-func joinOrLeaveChat(channel string, join bool) error {
-	vkpl.wsCounter++
-	action := "subscribe"
-	if !join {
-		action = "unsubscribe"
-	}
-	p := fmt.Sprintf(`{"%s":{"channel":"channel-chat:%s"},"id":%d}`, action, channel, vkpl.wsCounter)
-	err := SendWSMessage([]byte(p))
-	if err != nil {
-		return err
-	}
-	return nil
-}
-
-func joinAllChats() error {
-	channels := getWsChannelsFromDB().ChannelsAutoJoin
-
-	for _, channel := range channels {
-		err := joinOrLeaveChat(channel, true)
-		if err != nil {
-			log.Error("Error while joining chat:", err)
-			return err
-		}
-	}
-	return nil
-}
-
-func listen() {
-	for {
-		p, err := ReadWSMessage()
-		if err != nil {
-			log.Error("Error while reading ws message:", err)
-			log.Info("VKPL: Reconnecting to ws")
-			err := connectWS()
-			if err != nil {
-				log.Error("Error while reconnecting to ws:", err)
-			}
-			continue
-		}
-		if isPING(p) {
-			SendWSMessage([]byte("{}"))
-		} else {
-			var msg ChatMsg
-			err = json.Unmarshal(p, &msg)
-			if err != nil {
-				log.Error("Error while unmarshalling ws message:", err)
-
-				// ---------- Block for printing error ----------
-				dst := &bytes.Buffer{}
-				if err := json.Indent(dst, p, "", "  "); err != nil {
-					log.Error(err)
-					//panic(err)
-				}
-				log.Error(dst.String())
-				// ----------
-				return
-			}
-
-			if msg.Push.Pub.Data.Type == "message" {
-				var sb strings.Builder
-
-				//================== Block for printing all data
-				/*empJSON, err := json.MarshalIndent(msg.Push.Pub.Data.Data.Data, "", "  ")
-				if err != nil {
-					log.Fatalf(err.Error())
-				}
-
-				fmt.Printf("All Data: %s\n", string(empJSON))*/
-				//==================
-
-				for _, d := range msg.Push.Pub.Data.Data.Data {
-					var content []interface{}
-
-					if (d.Type == "text" || d.Type == "link") && d.Modificator == "" {
-						err := json.Unmarshal([]byte(d.Content), &content)
-						if err != nil {
-							log.Error("Error while unmarshalling content:", err)
-							// ----------
-							dst := &bytes.Buffer{}
-							if err := json.Indent(dst, p, "", "  "); err != nil {
-								log.Error(err)
-								//panic(err)
-							}
-							log.Error(dst.String())
-							// ----------
-							return
-
-						}
-						sb.WriteString(content[0].(string))
-					}
-				}
-
-				trimSb := strings.TrimSpace(sb.String())
-				if len(trimSb) == 0 {
-					continue
-				}
-
-				// Print each message
-				//fmt.Printf("%s: %s\n", msg.GetDisplayName(), trimSb)
-
-				alias, param := getAliasAndParamFromMessage(trimSb)
-				if !hasAccess(alias, &msg) {
-					continue
-				}
-
-				cmd, payload := getCommandAndPayloadForAlias(alias, msg.GetChannelId())
-				if cmd != "" {
-					if payload != "" {
-						param = payload
-					}
-					Commands[cmd].Handler(&msg, param)
-				}
-			}
-		}
-	}
-}
-
-func getWsChannelsFromDB() Config {
-	var config Config
-	ctx, cancel := context.WithTimeout(ctxParent, 3*time.Second)
-	defer cancel()
-
-	err := DB.GetCollection(DB.Config).FindOne(ctx, bson.M{"_id": "ws"}).Decode(&config)
-	if err != nil {
-		log.Error("Error while getting channels:", err)
-		return Config{}
-	}
-	return config
-}
-
-func saveWsChannelsToDB(config Config) error {
-	ctx, cancel := context.WithTimeout(ctxParent, 3*time.Second)
-	defer cancel()
-	_, err := DB.GetCollection(DB.Config).UpdateByID(ctx, "ws", bson.M{"$set": config})
-	if err != nil {
-		log.Error("Error while saving channels:", err)
-		return err
-	}
-	return nil
-}
-
-func AddUserToWs(userId string) error {
-	// DB
-	wsChannels := getWsChannelsFromDB()
-	wsChannels.ChannelsAutoJoin = append(wsChannels.ChannelsAutoJoin, userId)
-	err := saveWsChannelsToDB(wsChannels)
-	if err != nil {
-		log.Error("Error while adding user to ws:", err)
-		return err
-	}
-
-	// WS
-	err = joinOrLeaveChat(userId, true)
-	if err != nil {
-		log.Error("Error while joining chat for new user:", err)
-		return err
-	}
-
-	return nil
-}
-
-func RemoveUserFromWs(userId string) error {
-	// DB
-	wsChannels := getWsChannelsFromDB()
-	for i, v := range wsChannels.ChannelsAutoJoin {
-		if v == userId {
-			wsChannels.ChannelsAutoJoin = append(wsChannels.ChannelsAutoJoin[:i], wsChannels.ChannelsAutoJoin[i+1:]...)
-			break
-		}
-	}
-	err := saveWsChannelsToDB(wsChannels)
-	if err != nil {
-		log.Error("Error while removing user from ws:", err)
-		return err
-	}
-
-	// WS
-	err = joinOrLeaveChat(userId, false)
-	if err != nil {
-		log.Error("Error while leaving chat for removed user:", err)
-		return err
-	}
-	return nil
+	return AuthVkpl.ExpiresAt < time.Now().Add(time.Minute*10).UnixMilli()
 }
 
 func getCommandsFromDB() {
@@ -474,159 +326,4 @@ func getCommandsFromDB() {
 	}
 
 	ChannelsCommands = cmds
-}
-
-func SendMessageToChannel(msgText string, channel string, mention *User) {
-	var msg []interface{}
-
-	// Adding mention if present
-	if mention != nil {
-		m := &MsgMentionContent{
-			Type:        "mention",
-			ID:          mention.ID,
-			Nick:        mention.Nick,
-			DisplayName: mention.DisplayName,
-			Name:        mention.Name,
-		}
-		msg = append(msg, m)
-	}
-
-	// Parsing message text for links
-	re := regexp.MustCompile(`(https?://[^\s]+)`)
-	segments := re.Split(msgText, -1)
-	matches := re.FindAllStringSubmatch(msgText, -1)
-
-	// Adding segments and links to the message
-	for i, seg := range segments {
-		// Adding non-link segments
-		if seg != "" {
-			txt := &MsgTextContent{
-				Modificator: "",
-				Type:        "text",
-				Content:     fmt.Sprintf("[\"%s \",\"unstyled\",[]]", seg),
-			}
-			msg = append(msg, txt)
-		}
-
-		// Adding link blocks
-		if i < len(matches) {
-			match := matches[i][0]
-			link := &MsgLinkContent{
-				Type:    "link",
-				Content: fmt.Sprintf("[\"%s \",\"unstyled\",[]]", match),
-				Url:     match,
-			}
-			msg = append(msg, link)
-		}
-	}
-
-	// Adding block end
-	txt := &MsgTextContent{
-		Modificator: "BLOCK_END",
-		Type:        "text",
-		Content:     "",
-	}
-	msg = append(msg, txt)
-
-	// Marshalling the message
-	b, _ := json.Marshal(msg)
-	body := strings.NewReader("data=" + string(b))
-
-	// Creating and sending the request
-	req, err := http.NewRequest("POST", fmt.Sprintf("https://api.live.vkplay.ru/v1/blog/%s/public_video_stream/chat", channel), body)
-	if err != nil {
-		log.Error("Error while sending message to channel:", err)
-		return
-	}
-
-	req.Header.Add("Origin", "https://live.vkplay.ru")
-	req.Header.Add("Referer", fmt.Sprintf("https://live.vkplay.ru/%s", channel))
-	req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
-	req.Header.Add("Authorization", "Bearer "+GetVkplToken())
-	req.Header.Add("X-From-Id", authVkpl.ClientID)
-
-	client := http.Client{}
-	resp, err := client.Do(req)
-	if err != nil {
-		log.Error("Error while sending message to channel:", err)
-		return
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != 200 {
-		rd, _ := io.ReadAll(resp.Body)
-		log.Error(string(rd))
-	}
-}
-
-func CodeToToken(code string) (string, error) {
-	reqUrl := "https://api.live.vkplay.ru/oauth/server/token"
-	reqData := url.Values{
-		"code":         {code},
-		"grant_type":   {"authorization_code"},
-		"redirect_uri": {os.Getenv("CLIENT_AUTH_REDIRECT")},
-	}
-
-	req, err := http.NewRequest("POST", reqUrl, bytes.NewBufferString(reqData.Encode()))
-	if err != nil {
-		return "", err
-	}
-
-	req.Header.Set("Authorization", "Basic "+os.Getenv("VKPL_APP_CREDEANTIALS"))
-	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-
-	client := &http.Client{}
-	resp, err := client.Do(req)
-	if resp.StatusCode != 200 || err != nil {
-		log.Error("Error while changing code to token")
-		return "", err
-	}
-	defer resp.Body.Close()
-
-	b, err := io.ReadAll(resp.Body)
-	if err != nil {
-		log.Error("Error while changing code to token, read body:", err)
-		return "", err
-	}
-
-	var token map[string]interface{}
-	json.Unmarshal(b, &token)
-	return token["access_token"].(string), nil
-}
-
-func GetCurrentUserInfo(accessToken string) (model.CurrentUserVkpl, error) {
-	req, err := http.NewRequest("GET", "https://apidev.live.vkplay.ru/v1/current_user", nil)
-	if err != nil {
-		return model.CurrentUserVkpl{}, err
-	}
-	req.Header.Add("Authorization", "Bearer "+accessToken)
-	req.Header.Add("Content-Type", "application/json")
-
-	client := &http.Client{}
-	resp, err := client.Do(req)
-	if err != nil {
-		log.Error("Error while getting ws token:", err)
-		return model.CurrentUserVkpl{}, err
-	}
-	defer resp.Body.Close()
-
-	var currentUserVkpl model.CurrentUserVkpl
-	err = json.NewDecoder(resp.Body).Decode(&currentUserVkpl)
-	if err != nil {
-		return model.CurrentUserVkpl{}, err
-	}
-
-	return currentUserVkpl, nil
-}
-
-func InsertOrUpdateUser(ctx context.Context, user model.User) error {
-	log.Info("VKPL: Inserting or updating user")
-	ctx, cancel := context.WithTimeout(ctx, 3*time.Second)
-	defer cancel()
-	_, err := DB.GetCollection(DB.Users).UpdateByID(ctx, user.Id, bson.M{"$set": user}, options.Update().SetUpsert(true))
-	if err != nil {
-		log.Error("Error while inserting or updating user:", err)
-		return err
-	}
-	return nil
 }

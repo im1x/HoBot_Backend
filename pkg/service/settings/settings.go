@@ -13,7 +13,7 @@ import (
 )
 
 func GetCommands(ctx context.Context, userId string) ([]model.CommonCommand, error) {
-	cmdAndDescriptions, err := getCommandsWithDescription(ctx, userId)
+	cmdAndDescriptions, err := GetCommandsWithDescription(ctx, userId)
 	if err != nil {
 		return nil, err
 	}
@@ -148,7 +148,7 @@ func AddCommandForUser(ctx context.Context, userId string, command *model.Common
 		return nil, err
 	}
 
-	cmds, err := getCommandsWithDescription(ctx, userId)
+	cmds, err := GetCommandsWithDescription(ctx, userId)
 	if err != nil {
 		return nil, err
 	}
@@ -168,7 +168,7 @@ func EditCommandForUser(ctx context.Context, userId string, alias string, comman
 		log.Error("Error while updating aliases:", err)
 		return nil, err
 	}
-	cmds, err := getCommandsWithDescription(ctx, userId)
+	cmds, err := GetCommandsWithDescription(ctx, userId)
 	if err != nil {
 		return nil, err
 	}
@@ -183,7 +183,7 @@ func DeleteCommandForUser(ctx context.Context, userId string, alias string) ([]m
 		log.Error("Error while delete aliases:", err)
 		return nil, err
 	}
-	cmds, err := getCommandsWithDescription(ctx, userId)
+	cmds, err := GetCommandsWithDescription(ctx, userId)
 	if err != nil {
 		return nil, err
 	}
@@ -191,7 +191,7 @@ func DeleteCommandForUser(ctx context.Context, userId string, alias string) ([]m
 	return cmds, nil
 }
 
-func getCommandsWithDescription(ctx context.Context, userId string) ([]model.CommonCommand, error) {
+func GetCommandsWithDescription(ctx context.Context, userId string) ([]model.CommonCommand, error) {
 	var cmds []model.CommonCommand
 	commandDescription, err := getCommandDescription(ctx)
 	if err != nil {

@@ -34,10 +34,13 @@ func generateToken(userId string, secret string, expHour time.Duration) (string,
 }
 func GenerateTokens(userId string) (string, string) {
 	accessToken, err := generateToken(userId, os.Getenv("JWT_ACCESS_SECRET"), AccessTokenExpireHour)
-	refreshToken, err := generateToken(userId, os.Getenv("JWT_REFRESH_SECRET"), RefreshTokenExpireHour)
-
 	if err != nil {
-		log.Error("Generate token error")
+		log.Error("Generate access token error")
+	}
+
+	refreshToken, err := generateToken(userId, os.Getenv("JWT_REFRESH_SECRET"), RefreshTokenExpireHour)
+	if err != nil {
+		log.Error("Generate refresh token error")
 	}
 
 	return accessToken, refreshToken
@@ -85,6 +88,10 @@ func SaveToken(ctx context.Context, uid string, refreshToken string) error {
 	if res.Err() != nil {
 		if errors.Is(res.Err(), mongo.ErrNoDocuments) {
 			_, err = colToken.InsertOne(ctx, bson.M{"user_id": uid, "refresh_token": refreshToken})
+			if err != nil {
+				log.Error("Error while inserting token:", err)
+				return err
+			}
 			return nil
 		}
 		log.Error("Error while querying existing token:", err)
