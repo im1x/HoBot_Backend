@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"github.com/gofiber/fiber/v2/log"
 	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 	"io"
@@ -129,6 +130,23 @@ func RemoveAllSongs(channelId string) error {
 	if err != nil {
 		log.Error("Error while deleting playlist:", err)
 		return err
+	}
+	return nil
+}
+
+func RemoveSong(channelId, songId string) error {
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	defer cancel()
+
+	objectId, err := primitive.ObjectIDFromHex(songId)
+	if err != nil {
+		return err
+	}
+
+	res, err := DB.GetCollection(DB.SongRequests).DeleteOne(ctx, bson.M{"channel_id": channelId, "_id": objectId})
+	if err != nil || res.DeletedCount != 1 {
+		log.Error("Error while deleting song:", err)
+		return errors.New("error while deleting song")
 	}
 	return nil
 }
