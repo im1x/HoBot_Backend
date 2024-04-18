@@ -52,6 +52,12 @@ func GetVideoInfo(id string) (VideoInfo, error) {
 	re := regexp.MustCompile(regexp.QuoteMeta(`"title":"`) + "(.*?)" + regexp.QuoteMeta(`","lengthSeconds":"`) + "(.*?)" + regexp.QuoteMeta(`"`))
 	matches := re.FindStringSubmatch(jsonFromBody)
 
+	// check if there are enough matches
+	if len(matches) < 3 {
+		log.Error("YT title and duration parse failed. YT id:", id)
+		return VideoInfo{}, fmt.Errorf("YT title and duration parse failed")
+	}
+
 	// unquote title
 	if strings.Contains(matches[1], `\"`) {
 		videoInfo.Title = strings.ReplaceAll(matches[1], `\"`, `"`)
@@ -69,6 +75,13 @@ func GetVideoInfo(id string) (VideoInfo, error) {
 	//get views count
 	re = regexp.MustCompile(regexp.QuoteMeta(`"viewCount":"`) + "(.*?)" + regexp.QuoteMeta(`"`))
 	matches = re.FindStringSubmatch(jsonFromBody)
+
+	// check if there are enough matches
+	if len(matches) < 2 {
+		log.Error("YT viewsCount parse failed. YT id:", id)
+		return VideoInfo{}, fmt.Errorf("YT viewsCount parse failed")
+	}
+
 	viewsCount, err := strconv.Atoi(matches[1])
 	if err != nil {
 		log.Error("YT viewsCount parse failed:", err)
