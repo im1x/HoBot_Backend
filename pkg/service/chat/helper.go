@@ -1,6 +1,7 @@
 package chat
 
 import (
+	"HoBot_Backend/pkg/model"
 	"HoBot_Backend/pkg/service/vkplay"
 	"fmt"
 	"strings"
@@ -57,4 +58,12 @@ func fmtDuration(d time.Duration) string {
 		return fmt.Sprintf("%02d:%02d", m, s)
 	}
 	return fmt.Sprintf("%02d:%02d:%02d", h, m, s)
+}
+
+func isBotModeratorAndSentMsg(msg *ChatMsg, channelOwner model.User) bool {
+	if !vkplay.IsBotHaveModeratorRights(channelOwner.Channel) {
+		SendMessageToChannel("Для использования этой команды боту необходимы права модератора (для отправки личных сообщений)", msg.GetChannelId(), msg.GetUser())
+		return false
+	}
+	return true
 }

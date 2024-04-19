@@ -132,6 +132,13 @@ func AddDefaultSettingsForUser(ctx context.Context, user model.User) error {
 		return err
 	}
 
+	// volume
+	_, err = DB.GetCollection(DB.UserSettings).UpdateByID(ctx, user.Id, bson.M{"$set": bson.M{"volume": 50}}, options.Update().SetUpsert(true))
+	if err != nil {
+		log.Error("Error while setting volume for new user:", err)
+		return err
+	}
+
 	return nil
 }
 
@@ -216,4 +223,45 @@ func addDescriptionToCommands(cmdList *model.CommandList, descriptions model.Com
 			cmdList.Commands[cmd].Items[item].Label = descriptions.CommandsDescription[cmdList.Commands[cmd].Items[item].Value]
 		}
 	}
+}
+
+func SaveVolume(ctx context.Context, userId string, volume int) error {
+	_, err := DB.GetCollection(DB.UserSettings).UpdateByID(ctx, userId, bson.M{"$set": bson.M{"volume": volume}})
+	if err != nil {
+		log.Error("Error while updating volume:", err)
+		return err
+	}
+	return nil
+}
+
+func GetVolume(ctx context.Context, userId string) (int, error) {
+	var userSettingsVolume UserSettingsVolume
+	filter := bson.D{{"_id", userId}}
+	opts := options.FindOne().SetProjection(bson.D{{"volume", 1}})
+	err := DB.GetCollection(DB.UserSettings).FindOne(ctx, filter, opts).Decode(&userSettingsVolume)
+	if err != nil {
+		log.Error("Error while getting volume:", err)
+		return 0, err
+	}
+	return userSettingsVolume.Volume, nil
+}
+
+func ChangeVolumeBy(userId string, volume int) (int, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	vol, err := GetVolume(ctx, userId)
+	if err != nil {
+		return 0, err
+	}
+
+	vol += volume
+	vol = max(0, min(vol, 100))
+
+	err = SaveVolume(ctx, userId, vol)
+	if err != nil {
+		return 0, err
+	}
+
+	return vol, nil
 }

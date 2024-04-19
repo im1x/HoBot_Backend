@@ -81,3 +81,26 @@ func DeleteCommand(c *fiber.Ctx) error {
 
 	return c.Status(fiber.StatusOK).JSON(commands)
 }
+
+func SaveVolume(c *fiber.Ctx) error {
+	userId := parseUserIdFromRequest(c)
+	volume, err := c.ParamsInt("volume")
+	if err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON("Invalid volume")
+	}
+
+	err = settings.SaveVolume(c.Context(), userId, volume)
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(err.Error())
+	}
+	return nil
+}
+
+func GetVolume(c *fiber.Ctx) error {
+	userId := parseUserIdFromRequest(c)
+	volume, err := settings.GetVolume(c.Context(), userId)
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(err.Error())
+	}
+	return c.Status(fiber.StatusOK).JSON(volume)
+}

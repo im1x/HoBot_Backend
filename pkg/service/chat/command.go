@@ -5,7 +5,6 @@ import (
 	DB "HoBot_Backend/pkg/mongo"
 	"HoBot_Backend/pkg/service/settings"
 	"HoBot_Backend/pkg/service/songRequest"
-	"HoBot_Backend/pkg/service/vkplay"
 	"HoBot_Backend/pkg/service/youtube"
 	"HoBot_Backend/pkg/socketio"
 	"context"
@@ -100,7 +99,64 @@ func srAdd(msg *ChatMsg, param string) {
 }
 
 func srSetVolume(msg *ChatMsg, param string) {
-	if param == "" {
+	var vol int
+	switch {
+	case param == "":
+		vol, err := settings.GetVolume(context.Background(), msg.GetChannelId())
+		if err != nil {
+			return
+		}
+		SendWhisperToUser(fmt.Sprintf("Текущая громкость: %v%%", vol), msg.GetChannelId(), msg.GetUser())
+		return
+	case param[0] == '+' || param[0] == '-':
+		value := param[1:]
+		v, err := strconv.Atoi(value)
+		if err != nil {
+			return
+		}
+		if param[0] == '-' {
+			v = -v
+		}
+		vol, err = settings.ChangeVolumeBy(msg.GetChannelId(), v)
+		if err != nil {
+			return
+		}
+	default:
+		v, err := strconv.Atoi(param)
+		if err != nil {
+			return
+		}
+		vol = max(0, min(v, 100))
+
+		err = settings.SaveVolume(context.Background(), msg.GetChannelId(), vol)
+		if err != nil {
+			return
+		}
+	}
+
+	/*if param == "" {
+		vol, err := settings.GetVolume(context.Background(), msg.GetChannelId())
+		if err != nil {
+			return
+		}
+		SendWhisperToUser(fmt.Sprintf("Текущая громкость: %v%%", vol), msg.GetChannelId(), msg.GetUser())
+		return
+	}
+
+	if param[0] == '+' || param[0] == '-' {
+		value := param[1:]
+		vol, err := strconv.Atoi(value)
+		if err != nil {
+			return
+		}
+		if param[0] == '-' {
+			vol = -vol
+		}
+		newVol, err := settings.ChangeVolumeBy(msg.GetChannelId(), vol)
+		if err != nil {
+			return
+		}
+		SendWhisperToUser(fmt.Sprintf("Громкость установлена на %v%%", newVol), msg.GetChannelId(), msg.GetUser())
 		return
 	}
 
@@ -110,7 +166,12 @@ func srSetVolume(msg *ChatMsg, param string) {
 	}
 	vol = max(0, min(vol, 100))
 
-	socketio.Emit(msg.GetChannelId(), socketio.SongRequestSetVolume, param)
+	err = settings.SaveVolume(context.Background(), msg.GetChannelId(), vol)
+	if err != nil {
+		return
+	}*/
+
+	socketio.Emit(msg.GetChannelId(), socketio.SongRequestSetVolume, vol)
 	SendMessageToChannel(fmt.Sprintf("Громкость реквестов установлена на %v%%", vol), msg.GetChannelId(), nil)
 }
 
@@ -176,8 +237,7 @@ func availableCommands(msg *ChatMsg, param string) {
 		return
 	}
 
-	if !vkplay.IsBotHaveModeratorRights(channelOwner.Channel) {
-		SendMessageToChannel("Для использования этой команды боту необходимы права модератора (для отправки личных сообщений)", msg.GetChannelId(), msg.GetUser())
+	if !isBotModeratorAndSentMsg(msg, channelOwner) {
 		return
 	}
 
