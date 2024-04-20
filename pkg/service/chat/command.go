@@ -88,11 +88,13 @@ func srAdd(msg *ChatMsg, param string) {
 		End:       0,
 	}
 
-	err = songRequest.AddSongRequestToDB(sr)
+	id, err := songRequest.AddSongRequestToDB(sr)
 	if err != nil {
 		log.Error("Error while adding song request to db:", err)
 		return
 	}
+
+	sr.Id = id
 
 	socketio.Emit(msg.GetChannelId(), socketio.SongRequestAdded, sr)
 	SendWhisperToUser("Реквест добавлен в очередь", msg.GetChannelId(), msg.GetUser())

@@ -17,15 +17,18 @@ import (
 	"time"
 )
 
-func AddSongRequestToDB(songRequest SongRequest) error {
+func AddSongRequestToDB(songRequest SongRequest) (primitive.ObjectID, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 	defer cancel()
-	_, err := DB.GetCollection(DB.SongRequests).InsertOne(ctx, songRequest)
+	res, err := DB.GetCollection(DB.SongRequests).InsertOne(ctx, songRequest)
 	if err != nil {
 		log.Error("Error while inserting song request:", err)
-		return err
+		return primitive.NilObjectID, err
 	}
-	return nil
+
+	insertedID := res.InsertedID.(primitive.ObjectID)
+
+	return insertedID, nil
 }
 
 func GetPlaylist(ctxReq context.Context, user string) ([]SongRequest, error) {
