@@ -54,7 +54,7 @@ func listen() {
 				}
 				log.Error(dst.String())
 				// ----------
-				return
+				continue
 			}
 
 			if msg.Push.Pub.Data.Type == "message" {
@@ -84,7 +84,7 @@ func listen() {
 							}
 							log.Error(dst.String())
 							// ----------
-							return
+							continue
 
 						}
 						sb.WriteString(content[0].(string))
