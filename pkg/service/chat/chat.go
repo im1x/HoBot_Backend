@@ -119,6 +119,9 @@ func listen() {
 func SendMessageToChannel(msgText string, channel string, mention *User) {
 	var msg []interface{}
 	msgTextClear := prepareStringForSend(msgText)
+	if len(msgTextClear) > 495 {
+		msgTextClear = "Невозможно отобразить, слишком длинное сообщение."
+	}
 
 	// Adding mention if present
 	if mention != nil {
