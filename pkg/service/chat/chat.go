@@ -118,6 +118,7 @@ func listen() {
 
 func SendMessageToChannel(msgText string, channel string, mention *User) {
 	var msg []interface{}
+	msgTextClear := prepareStringForSend(msgText)
 
 	// Adding mention if present
 	if mention != nil {
@@ -133,8 +134,8 @@ func SendMessageToChannel(msgText string, channel string, mention *User) {
 
 	// Parsing message text for links
 	re := regexp.MustCompile(`(https?://[^\s]+)`)
-	segments := re.Split(msgText, -1)
-	matches := re.FindAllStringSubmatch(msgText, -1)
+	segments := re.Split(msgTextClear, -1)
+	matches := re.FindAllStringSubmatch(msgTextClear, -1)
 
 	// Adding segments and links to the message
 	for i, seg := range segments {
@@ -170,6 +171,7 @@ func SendMessageToChannel(msgText string, channel string, mention *User) {
 
 	// Marshalling the message
 	b, _ := json.Marshal(msg)
+
 	body := strings.NewReader("data=" + string(b))
 
 	// Creating and sending the request

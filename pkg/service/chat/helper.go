@@ -67,3 +67,9 @@ func isBotModeratorAndSentMsg(msg *ChatMsg, channelOwner model.User) bool {
 	}
 	return true
 }
+
+func prepareStringForSend(s string) string {
+	res := strings.ReplaceAll(s, "\n", "\\n")
+	res = strings.ReplaceAll(res, `"`, `\"`)
+	return res
+}
