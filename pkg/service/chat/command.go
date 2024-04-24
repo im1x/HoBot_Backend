@@ -202,9 +202,9 @@ func availableCommands(msg *ChatMsg, param string) {
 		return
 	}
 
-	if !isBotModeratorAndSentMsg(msg, channelOwner) {
+	/*	if !isBotModeratorAndSentMsg(msg, channelOwner) {
 		return
-	}
+	}*/
 
 	commands, err := settings.GetCommandsWithDescription(ctx, msg.GetChannelId())
 	if err != nil {

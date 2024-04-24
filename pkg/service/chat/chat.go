@@ -222,6 +222,8 @@ func AddUserToWs(userId string) error {
 		return err
 	}
 
+	SendMessageToChannel("Бот подключился к чату. Для нормальной работы боту необходимы права модератора.", userId, nil)
+
 	return nil
 }
 
@@ -239,6 +241,8 @@ func RemoveUserFromWs(userId string) error {
 		log.Error("Error while removing user from ws:", err)
 		return err
 	}
+
+	SendMessageToChannel("Бот покинул чат.", userId, nil)
 
 	// WS
 	err = joinOrLeaveChat(userId, false)
