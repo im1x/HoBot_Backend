@@ -49,7 +49,7 @@ func GetVideoInfo(id string) (VideoInfo, error) {
 	var videoInfo VideoInfo
 
 	// get title and duration
-	re := regexp.MustCompile(regexp.QuoteMeta(`"title":"`) + "(.*?)" + regexp.QuoteMeta(`","lengthSeconds":"`) + "(.*?)" + regexp.QuoteMeta(`"`))
+	re := regexp.MustCompile(regexp.QuoteMeta(`"videoDetails":{"videoId":"`) + `.*?` + regexp.QuoteMeta(`","title":"`) + `(.*?)` + regexp.QuoteMeta(`","lengthSeconds":"`) + `(.*?)` + regexp.QuoteMeta(`"`))
 	matches := re.FindStringSubmatch(jsonFromBody)
 
 	// check if there are enough matches
