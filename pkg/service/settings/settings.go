@@ -111,31 +111,25 @@ func getCommandDescription(ctx context.Context) (model.CommandsDescription, erro
 }
 
 func AddDefaultSettingsForUser(ctx context.Context, user model.User) error {
-	var config vkplay.ChCommand
-	err := DB.GetCollection(DB.UserSettings).FindOne(ctx, bson.M{"_id": "default"}).Decode(&config)
+	var settings UserSettings
+	err := DB.GetCollection(DB.UserSettings).FindOne(ctx, bson.M{"_id": "default"}).Decode(&settings)
 	if err != nil {
 		log.Error("Error while getting default settings:", err)
 		return err
 	}
 
-	alias := config.Aliases["!пл"]
+	alias := settings.Aliases["!пл"]
 	alias.Payload = alias.Payload + user.Channel
-	config.Aliases["!пл"] = alias
+	settings.Aliases["!пл"] = alias
 
-	// copy default settings to new user
-	vkplay.ChannelsCommands.Channels[user.Id] = config
+	// set default aliases to new user
+	currentUserAliases := vkplay.ChCommand{Aliases: settings.Aliases}
+	vkplay.ChannelsCommands.Channels[user.Id] = currentUserAliases
 
 	// save to DB
-	_, err = DB.GetCollection(DB.UserSettings).UpdateByID(ctx, user.Id, bson.M{"$set": vkplay.ChannelsCommands.Channels[user.Id]}, options.Update().SetUpsert(true))
+	_, err = DB.GetCollection(DB.UserSettings).UpdateByID(ctx, user.Id, bson.M{"$set": settings}, options.Update().SetUpsert(true))
 	if err != nil {
 		log.Error("Error whole copying default settings:", err)
-		return err
-	}
-
-	// volume
-	_, err = DB.GetCollection(DB.UserSettings).UpdateByID(ctx, user.Id, bson.M{"$set": bson.M{"volume": 50}}, options.Update().SetUpsert(true))
-	if err != nil {
-		log.Error("Error while setting volume for new user:", err)
 		return err
 	}
 
