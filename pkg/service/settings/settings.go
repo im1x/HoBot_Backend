@@ -229,15 +229,15 @@ func SaveVolume(ctx context.Context, userId string, volume int) error {
 }
 
 func GetVolume(ctx context.Context, userId string) (int, error) {
-	var userSettingsVolume UserSettingsVolume
+	var userSettings UserSettings
 	filter := bson.D{{"_id", userId}}
 	opts := options.FindOne().SetProjection(bson.D{{"volume", 1}})
-	err := DB.GetCollection(DB.UserSettings).FindOne(ctx, filter, opts).Decode(&userSettingsVolume)
+	err := DB.GetCollection(DB.UserSettings).FindOne(ctx, filter, opts).Decode(&userSettings)
 	if err != nil {
 		log.Error("Error while getting volume:", err)
 		return 0, err
 	}
-	return userSettingsVolume.Volume, nil
+	return userSettings.Volume, nil
 }
 
 func ChangeVolumeBy(userId string, volume int) (int, error) {
