@@ -162,8 +162,8 @@ func AddDefaultSettingsForUser(ctx context.Context, user model.User) error {
 	settings.Aliases["!пл"] = alias
 
 	// set default aliases to new user
-	currentUserAliases := vkplay.ChCommand{Aliases: settings.Aliases}
-	vkplay.ChannelsCommands.Channels[user.Id] = currentUserAliases
+	vkplay.ChannelsCommands.Channels[user.Id] = vkplay.ChCommand{Aliases: settings.Aliases}
+	UsersSettings[user.Id] = UserSettings{SongRequests: settings.SongRequests}
 
 	// save to DB
 	_, err = DB.GetCollection(DB.UserSettings).InsertOne(ctx, settings)

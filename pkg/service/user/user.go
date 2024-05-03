@@ -118,5 +118,8 @@ func WipeUser(ctx context.Context, id string) error {
 		return err
 	}
 
+	delete(vkplay.ChannelsCommands.Channels, id)
+	delete(settingsService.UsersSettings, id)
+
 	return nil
 }
