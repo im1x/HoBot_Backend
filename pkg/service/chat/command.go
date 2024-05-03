@@ -71,8 +71,23 @@ func srAdd(msg *ChatMsg, param string) {
 		return
 	}
 
-	if info.Views < 2000 {
-		SendWhisperToUser("Слишком мало просмотров у видео", msg.GetChannelId(), msg.GetUser())
+	minViews := settings.UsersSettings[msg.GetChannelId()].SongRequests.MinVideoViews
+	if info.Views < minViews {
+		SendWhisperToUser(fmt.Sprintf("Слишком мало просмотров у видео. От %d просмотров", minViews), msg.GetChannelId(), msg.GetUser())
+		return
+	}
+
+	count, err := songRequest.CountSongsByUser(msg.GetChannelId(), msg.GetDisplayName())
+	if err != nil {
+		return
+	}
+
+	maxRequest := settings.UsersSettings[msg.GetChannelId()].SongRequests.MaxRequestsPerUser
+	if maxRequest > 0 && count >= maxRequest {
+		SendWhisperToUser(
+			fmt.Sprintf("Ваши заказы уже в плейлисте. Не больше %d заказов от пользователя на плейлист.",
+				settings.UsersSettings[msg.GetChannelId()].SongRequests.MaxRequestsPerUser),
+			msg.GetChannelId(), msg.GetUser())
 		return
 	}
 

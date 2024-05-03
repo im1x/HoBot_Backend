@@ -4,7 +4,7 @@ import (
 	tokenService "HoBot_Backend/pkg/service/token"
 	"fmt"
 	"github.com/gofiber/fiber/v2/log"
-	"github.com/zishang520/engine.io/types"
+	"github.com/zishang520/engine.io/v2/types"
 	"github.com/zishang520/socket.io/v2/socket"
 	"os"
 )

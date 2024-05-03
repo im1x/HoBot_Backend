@@ -12,6 +12,43 @@ import (
 	"time"
 )
 
+var UsersSettings = make(map[string]UserSettings)
+
+func LoadSettings() {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	cursor, err := DB.GetCollection(DB.UserSettings).Find(ctx, bson.M{})
+	if err != nil {
+		log.Error("Error while loading settings:", err)
+		return
+	}
+
+	for cursor.Next(ctx) {
+		var result UserSettings
+		if err := cursor.Decode(&result); err != nil {
+			log.Error("Error while decoding settings:", err)
+			continue
+		}
+		result.Aliases = nil
+		result.Volume = 0
+		UsersSettings[result.Id] = result
+	}
+}
+
+func SaveSongRequestSettings(ctx context.Context, userId string, songReqSettings SongRequestsSettings) error {
+	userSetting := UsersSettings[userId]
+	userSetting.SongRequests = songReqSettings
+	UsersSettings[userId] = userSetting
+	_, err := DB.GetCollection(DB.UserSettings).UpdateByID(ctx, userId, bson.M{"$set": bson.M{"song_requests": songReqSettings}})
+	if err != nil {
+		log.Error("Error while saving song request settings:", err)
+		return err
+	}
+	return nil
+
+}
+
 func GetCommands(ctx context.Context, userId string) ([]model.CommonCommand, error) {
 	cmdAndDescriptions, err := GetCommandsWithDescription(ctx, userId)
 	if err != nil {
@@ -118,6 +155,8 @@ func AddDefaultSettingsForUser(ctx context.Context, user model.User) error {
 		return err
 	}
 
+	settings.Id = user.Id
+
 	alias := settings.Aliases["!пл"]
 	alias.Payload = alias.Payload + user.Channel
 	settings.Aliases["!пл"] = alias
@@ -127,7 +166,7 @@ func AddDefaultSettingsForUser(ctx context.Context, user model.User) error {
 	vkplay.ChannelsCommands.Channels[user.Id] = currentUserAliases
 
 	// save to DB
-	_, err = DB.GetCollection(DB.UserSettings).UpdateByID(ctx, user.Id, bson.M{"$set": settings}, options.Update().SetUpsert(true))
+	_, err = DB.GetCollection(DB.UserSettings).InsertOne(ctx, settings)
 	if err != nil {
 		log.Error("Error whole copying default settings:", err)
 		return err

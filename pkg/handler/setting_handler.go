@@ -3,7 +3,9 @@ package handler
 import (
 	"HoBot_Backend/pkg/model"
 	"HoBot_Backend/pkg/service/settings"
+	"errors"
 	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v2/log"
 	"net/url"
 )
 
@@ -103,4 +105,36 @@ func GetVolume(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusInternalServerError).JSON(err.Error())
 	}
 	return c.Status(fiber.StatusOK).JSON(volume)
+}
+
+func ChangeSongRequestsSettings(c *fiber.Ctx) error {
+
+	var newSettings settings.SongRequestsSettings
+	err := c.BodyParser(&newSettings)
+	if err != nil {
+		log.Error("Error while parsing request body:", err)
+		return err
+	}
+
+	if err = validate.Struct(newSettings); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(err.Error())
+	}
+
+	userId := parseUserIdFromRequest(c)
+
+	err = settings.SaveSongRequestSettings(c.Context(), userId, newSettings)
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(err.Error())
+	}
+	return nil
+}
+
+func GetSongRequestsSettings(c *fiber.Ctx) error {
+	userId := parseUserIdFromRequest(c)
+
+	if userSettings, ok := settings.UsersSettings[userId]; ok {
+		return c.Status(fiber.StatusOK).JSON(userSettings.SongRequests)
+	} else {
+		return c.Status(fiber.StatusBadRequest).JSON(errors.New("user not found"))
+	}
 }

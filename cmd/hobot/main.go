@@ -4,6 +4,7 @@ import (
 	"HoBot_Backend/pkg/mongo"
 	"HoBot_Backend/pkg/router"
 	"HoBot_Backend/pkg/service/chat"
+	"HoBot_Backend/pkg/service/settings"
 	"HoBot_Backend/pkg/service/vkplay"
 	"HoBot_Backend/pkg/socketio"
 	"context"
@@ -38,6 +39,7 @@ func main() {
 
 	ctx := context.Background()
 	vkplay.Start(ctx)
+	settings.LoadSettings()
 	chat.Start()
 
 	//Http server

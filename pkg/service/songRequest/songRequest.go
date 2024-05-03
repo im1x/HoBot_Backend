@@ -179,3 +179,14 @@ func GetCurrentSong(channelId string) (SongRequest, error) {
 
 	return curSong, nil
 }
+
+func CountSongsByUser(channelId string, userName string) (int, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	defer cancel()
+	res, err := DB.GetCollection(DB.SongRequests).CountDocuments(ctx, bson.M{"channel_id": channelId, "by": userName})
+	if err != nil {
+		log.Error("Error while counting songs by user:", err)
+		return 0, err
+	}
+	return int(res), nil
+}

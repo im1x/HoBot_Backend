@@ -38,6 +38,8 @@ func Register(app *fiber.App) {
 	settings.Delete("/commands/:alias", handler.DeleteCommand)
 	settings.Post("/volume/:volume", handler.SaveVolume)
 	settings.Get("/volume", handler.GetVolume)
+	settings.Post("songrequests", handler.ChangeSongRequestsSettings)
+	settings.Get("/songrequests", handler.GetSongRequestsSettings)
 
 	songRequest.Get("/playlist", handler.Playlist)
 	songRequest.Post("/skip", handler.SkipSong)
