@@ -71,9 +71,16 @@ func srAdd(msg *ChatMsg, param string) {
 		return
 	}
 
-	minViews := settings.UsersSettings[msg.GetChannelId()].SongRequests.MinVideoViews
-	if info.Views < minViews {
-		SendWhisperToUser(fmt.Sprintf("Слишком мало просмотров у видео. От %d просмотров", minViews), msg.GetChannelId(), msg.GetUser())
+	srSettings := settings.UsersSettings[msg.GetChannelId()].SongRequests
+
+	if info.Views < srSettings.MinVideoViews {
+		SendWhisperToUser(fmt.Sprintf("Слишком мало просмотров у видео. От %d просмотров", srSettings.MinVideoViews), msg.GetChannelId(), msg.GetUser())
+		return
+	}
+
+	if srSettings.MaxDurationMinutes > 0 && info.Duration > srSettings.MaxDurationMinutes*60 {
+		SendWhisperToUser(fmt.Sprintf("Слишком продолжительное видео. Максимальное время видео - %d минут(ы).",
+			srSettings.MaxDurationMinutes), msg.GetChannelId(), msg.GetUser())
 		return
 	}
 
@@ -82,8 +89,7 @@ func srAdd(msg *ChatMsg, param string) {
 		return
 	}
 
-	maxRequest := settings.UsersSettings[msg.GetChannelId()].SongRequests.MaxRequestsPerUser
-	if maxRequest > 0 && count >= maxRequest {
+	if srSettings.MaxRequestsPerUser > 0 && count >= srSettings.MaxRequestsPerUser {
 		SendWhisperToUser(
 			fmt.Sprintf("Ваши заказы уже в плейлисте. Не больше %d заказов от пользователя на плейлист.",
 				settings.UsersSettings[msg.GetChannelId()].SongRequests.MaxRequestsPerUser),
