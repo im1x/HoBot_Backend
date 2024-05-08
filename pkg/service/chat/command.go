@@ -79,7 +79,7 @@ func srAdd(msg *ChatMsg, param string) {
 	}
 
 	if srSettings.MaxDurationMinutes > 0 && info.Duration > srSettings.MaxDurationMinutes*60 {
-		SendWhisperToUser(fmt.Sprintf("Слишком продолжительное видео. Максимальное время видео - %d минут(ы).",
+		SendWhisperToUser(fmt.Sprintf("Слишком продолжительное видео. Максимальное время видео - %d минут(ы)",
 			srSettings.MaxDurationMinutes), msg.GetChannelId(), msg.GetUser())
 		return
 	}
@@ -91,7 +91,7 @@ func srAdd(msg *ChatMsg, param string) {
 
 	if srSettings.MaxRequestsPerUser > 0 && count >= srSettings.MaxRequestsPerUser {
 		SendWhisperToUser(
-			fmt.Sprintf("Ваши заказы уже в плейлисте. Не больше %d заказов от пользователя на плейлист.",
+			fmt.Sprintf("Ваши заказы уже в плейлисте. Не больше %d заказов от пользователя на плейлист",
 				settings.UsersSettings[msg.GetChannelId()].SongRequests.MaxRequestsPerUser),
 			msg.GetChannelId(), msg.GetUser())
 		return
@@ -185,7 +185,7 @@ func srCurrentSong(msg *ChatMsg, param string) {
 		return
 	}
 
-	SendWhisperToUser(fmt.Sprintf("Текущий реквест: %s ( https://youtu.be/%s )", song.Title, song.YT_ID), msg.GetChannelId(), msg.GetUser())
+	SendWhisperToUser(fmt.Sprintf("Текущая песня: %s ( https://youtu.be/%s )", song.Title, song.YT_ID), msg.GetChannelId(), msg.GetUser())
 }
 
 func srMySong(msg *ChatMsg, param string) {
