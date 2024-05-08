@@ -53,7 +53,7 @@ func SkipSong(c *fiber.Ctx) error {
 				log.Error("Error while getting current song:", err)
 				return c.Status(fiber.StatusInternalServerError).JSON(err.Error())
 			}
-			chat.SendMessageToChannel(fmt.Sprintf("Заказ \"%s\" от %s не может быть воспроизведен, пропущен.", song.Title, song.By), userId, nil)
+			chat.SendMessageToChannel(fmt.Sprintf("Песня \"%s\" от %s не воспроизводится, пропущена", song.Title, song.By), userId, nil)
 		}
 	}
 
