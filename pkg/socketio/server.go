@@ -14,14 +14,15 @@ var io *socket.Server
 type SocketEvent string
 
 const (
-	SongRequestAdded     SocketEvent = "SongRequestAdded"
-	SongRequestSetVolume SocketEvent = "SongRequestSetVolume"
-	SongRequestSkipSong  SocketEvent = "SongRequestSkipSong"
-	SongRequestPlayPause SocketEvent = "SongRequestPlayPause"
+	SongRequestAdded      SocketEvent = "SongRequestAdded"
+	SongRequestSetVolume  SocketEvent = "SongRequestSetVolume"
+	SongRequestSkipSong   SocketEvent = "SongRequestSkipSong"
+	SongRequestPlayPause  SocketEvent = "SongRequestPlayPause"
+	SongRequestDeleteSong SocketEvent = "SongRequestDeleteSong"
 )
 
 func Start() {
-	httpServer := types.CreateServer(nil)
+	httpServer := types.NewWebServer(nil)
 
 	serverOptions := socket.DefaultServerOptions()
 	cors := &types.Cors{

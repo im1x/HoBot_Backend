@@ -154,6 +154,21 @@ func RemoveSong(channelId, songId string) error {
 	return nil
 }
 
+func DeleteSongByYtId(channelId, ytId string) (SongRequest, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	defer cancel()
+
+	var song SongRequest
+	err := DB.GetCollection(DB.SongRequests).FindOneAndDelete(ctx, bson.M{"channel_id": channelId, "yt_id": ytId}).Decode(&song)
+
+	if err != nil {
+		log.Error("Error while deleting song:", err)
+		return SongRequest{}, errors.New("error while deleting song")
+	}
+
+	return song, nil
+}
+
 func GetCurrentSong(channelId string) (SongRequest, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 	defer cancel()

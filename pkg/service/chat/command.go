@@ -29,6 +29,7 @@ func init() {
 	addCommand("SR_SongRequest", srAdd)
 	addCommand("SR_SetVolume", srSetVolume)
 	addCommand("SR_SkipSong", srSkip)
+	addCommand("SR_DeleteSong", srDeleteSongRequest)
 	addCommand("SR_PlayPause", srPlayPause)
 	addCommand("SR_CurrentSong", srCurrentSong)
 	addCommand("SR_MySong", srMySong)
@@ -168,6 +169,31 @@ func srSkip(msg *ChatMsg, param string) {
 	}
 	socketio.Emit(msg.GetChannelId(), socketio.SongRequestSkipSong, "")
 	SendMessageToChannel(msg.GetDisplayName()+" пропустил реквест", msg.GetChannelId(), nil)
+}
+
+func srDeleteSongRequest(msg *ChatMsg, param string) {
+	if param == "" {
+		return
+	}
+
+	currentSong, err := songRequest.GetCurrentSong(msg.GetChannelId())
+	if err != nil {
+		return
+	}
+
+	if currentSong.YT_ID == param {
+		SendWhisperToUser("Текущую песню можно только пропустить, для этого используйте команду пропуска", msg.GetChannelId(), msg.GetUser())
+		return
+	}
+
+	song, err := songRequest.DeleteSongByYtId(msg.GetChannelId(), param)
+	if err != nil {
+		return
+	}
+
+	socketio.Emit(msg.GetChannelId(), socketio.SongRequestDeleteSong, song.Id)
+	SendMessageToChannel(fmt.Sprintf("%s удалил песню \"%s\" от %s", msg.GetDisplayName(), song.Title, song.By), msg.GetChannelId(), nil)
+
 }
 
 func srPlayPause(msg *ChatMsg, param string) {

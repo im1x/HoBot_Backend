@@ -17,7 +17,7 @@ type CommandsDescription struct {
 }
 
 type CommonCommand struct {
-	Command     string `json:"command" validate:"oneof=Greating_To_User SR_PlayPause SR_SetVolume SR_SkipSong SR_SongRequest SR_CurrentSong SR_MySong Print_Text Available_Commands"`
+	Command     string `json:"command" validate:"oneof=Greating_To_User SR_PlayPause SR_SetVolume SR_SkipSong SR_SongRequest SR_CurrentSong SR_MySong Print_Text Available_Commands SR_DeleteSong"`
 	Alias       string `json:"alias" validate:"required,gte=3"`
 	AccessLevel int    `json:"access_level"`
 	Description string `json:"description"`
