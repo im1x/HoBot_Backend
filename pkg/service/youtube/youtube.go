@@ -58,11 +58,16 @@ func GetVideoInfo(id string) (VideoInfo, error) {
 		return VideoInfo{}, fmt.Errorf("YT title and duration parse failed")
 	}
 
+	videoInfo.Title = matches[1]
+
 	// unquote title
-	if strings.Contains(matches[1], `\"`) {
-		videoInfo.Title = strings.ReplaceAll(matches[1], `\"`, `"`)
-	} else {
-		videoInfo.Title = matches[1]
+	if strings.Contains(videoInfo.Title, `\"`) {
+		videoInfo.Title = strings.ReplaceAll(videoInfo.Title, `\"`, `"`)
+	}
+
+	// ampersand in title
+	if strings.Contains(videoInfo.Title, `\u0026`) {
+		videoInfo.Title = strings.ReplaceAll(videoInfo.Title, `\u0026`, `&`)
 	}
 
 	duration, err := strconv.Atoi(matches[2])
