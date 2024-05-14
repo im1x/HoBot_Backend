@@ -59,6 +59,34 @@ func GetPlaylist(ctxReq context.Context, user string) ([]SongRequest, error) {
 	return playlist, nil
 }
 
+func GetPlaylistHistory(ctxReq context.Context, user string) ([]SongRequest, error) {
+	var playlistHistory []SongRequest
+	ctx, cancel := context.WithTimeout(ctxReq, 3*time.Second)
+	defer cancel()
+
+	cursor, err := DB.GetCollection(DB.SongRequestsHistory).Find(ctx, bson.M{"channel_id": user})
+	if err != nil {
+		log.Error("Error while finding song requests history:", err)
+		return nil, err
+	}
+
+	for cursor.Next(ctx) {
+		var song SongRequest
+		if err := cursor.Decode(&song); err != nil {
+			log.Error("Error decoding song request history:", err)
+			continue
+		}
+		playlistHistory = append(playlistHistory, song)
+	}
+
+	if err := cursor.Err(); err != nil {
+		log.Error("Error iterating over cursor:", err)
+		return nil, err
+	}
+
+	return playlistHistory, nil
+}
+
 func GetUserIdByName(user string) (string, error) {
 	req, err := http.NewRequest("GET", fmt.Sprintf("https://api.live.vkplay.ru/v1/blog/%s/public_video_stream/chat/user/", user), nil)
 	if err != nil {
@@ -112,17 +140,60 @@ func IsPlaylistFull(user string) bool {
 	return false
 }
 
+func saveSongRequestToHistory(song SongRequest) error {
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	defer cancel()
+
+	// count user documents in history
+	count, err := DB.GetCollection(DB.SongRequestsHistory).CountDocuments(ctx, bson.M{"channel_id": song.ChannelId})
+	if err != nil {
+		log.Error("Error while counting user documents in history:", err)
+		return err
+	}
+
+	if count >= 3 {
+		// delete oldest document
+		filter := bson.M{"channel_id": song.ChannelId}
+		opt := options.FindOneAndDelete().SetSort(bson.D{{"_id", 1}})
+		result := DB.GetCollection(DB.SongRequestsHistory).FindOneAndDelete(ctx, filter, opt)
+		if result.Err() != nil {
+			log.Error("Error while deleting oldest document from history:", result.Err())
+			return result.Err()
+		}
+	}
+
+	_, err = DB.GetCollection(DB.SongRequestsHistory).InsertOne(ctx, song)
+	if err != nil {
+		log.Error("Error while inserting song to history:", err)
+		return err
+	}
+
+	return nil
+}
+
 func SkipSong(channelId string) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 	defer cancel()
 
+	var song SongRequest
+
 	filter := bson.M{"channel_id": channelId}
 	opt := options.FindOneAndDelete().SetSort(bson.D{{"_id", 1}})
-	result := DB.GetCollection(DB.SongRequests).FindOneAndDelete(ctx, filter, opt)
-	if result.Err() != nil {
+	err := DB.GetCollection(DB.SongRequests).FindOneAndDelete(ctx, filter, opt).Decode(&song)
+	if err != nil {
+		log.Error("Error while deleting song request:", err)
+		return err
+	}
+
+	err = saveSongRequestToHistory(song)
+	if err != nil {
+		return err
+	}
+
+	/*if result.Err() != nil {
 		log.Error("Error while deleting song request:", result.Err())
 		return result.Err()
-	}
+	}*/
 	return nil
 }
 

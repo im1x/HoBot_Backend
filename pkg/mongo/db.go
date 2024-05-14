@@ -11,14 +11,15 @@ import (
 type CollectionName string
 
 const (
-	Users           CollectionName = "Users"
-	Tokens          CollectionName = "Tokens"
-	Vkpl            CollectionName = "Vkpl"
-	Config          CollectionName = "Config"
-	SettingsOptions CollectionName = "SettingsOptions"
-	UserSettings    CollectionName = "UserSettings"
-	SongRequests    CollectionName = "SongRequests"
-	Feedback        CollectionName = "Feedback"
+	Users               CollectionName = "Users"
+	Tokens              CollectionName = "Tokens"
+	Vkpl                CollectionName = "Vkpl"
+	Config              CollectionName = "Config"
+	SettingsOptions     CollectionName = "SettingsOptions"
+	UserSettings        CollectionName = "UserSettings"
+	SongRequests        CollectionName = "SongRequests"
+	SongRequestsHistory CollectionName = "SongRequestsHistory"
+	Feedback            CollectionName = "Feedback"
 )
 
 var ctx = context.TODO()

@@ -7,6 +7,7 @@ import (
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/log"
 	"net/url"
+	"sync"
 )
 
 func PlaylistByStreamer(c *fiber.Ctx) error {
@@ -20,12 +21,31 @@ func PlaylistByStreamer(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusInternalServerError).JSON(err.Error())
 	}
 
-	playlist, err := songRequest.GetPlaylist(c.Context(), userId)
-	if err != nil {
-		return err
+	var (
+		wg                      sync.WaitGroup
+		playlist, history       []songRequest.SongRequest
+		playlistErr, historyErr error
+	)
+
+	wg.Add(2)
+
+	go func() {
+		defer wg.Done()
+		playlist, playlistErr = songRequest.GetPlaylist(c.Context(), userId)
+	}()
+
+	go func() {
+		defer wg.Done()
+		history, historyErr = songRequest.GetPlaylistHistory(c.Context(), userId)
+	}()
+
+	wg.Wait()
+
+	if playlistErr != nil || historyErr != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Failed to get playlist"})
 	}
 
-	return c.Status(fiber.StatusOK).JSON(playlist)
+	return c.Status(fiber.StatusOK).JSON(fiber.Map{"playlist": playlist, "history": history})
 }
 
 func Playlist(c *fiber.Ctx) error {
