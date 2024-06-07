@@ -19,6 +19,9 @@ const (
 	SongRequestSkipSong   SocketEvent = "SongRequestSkipSong"
 	SongRequestPlayPause  SocketEvent = "SongRequestPlayPause"
 	SongRequestDeleteSong SocketEvent = "SongRequestDeleteSong"
+	VotingStart           SocketEvent = "VotingStart"
+	VotingVote            SocketEvent = "VotingVote"
+	VotingStop            SocketEvent = "VotingStop"
 )
 
 func Start() {
