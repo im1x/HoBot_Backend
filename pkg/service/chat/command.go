@@ -75,12 +75,15 @@ func srAdd(msg *ChatMsg, param string) {
 	srSettings := settings.UsersSettings[msg.GetChannelId()].SongRequests
 
 	if info.Views < srSettings.MinVideoViews {
-		SendWhisperToUser(fmt.Sprintf("Слишком мало просмотров у видео. От %d просмотров", srSettings.MinVideoViews), msg.GetChannelId(), msg.GetUser())
+		//SendWhisperToUser(fmt.Sprintf("Слишком мало просмотров у видео. От %d просмотров", srSettings.MinVideoViews), msg.GetChannelId(), msg.GetUser())
+		SendMessageToChannel(fmt.Sprintf("Слишком мало просмотров у видео. От %d просмотров", srSettings.MinVideoViews), msg.GetChannelId(), msg.GetUser())
 		return
 	}
 
 	if srSettings.MaxDurationMinutes > 0 && info.Duration > srSettings.MaxDurationMinutes*60 {
-		SendWhisperToUser(fmt.Sprintf("Слишком продолжительное видео. Максимальное время видео - %d минут(ы)",
+		//SendWhisperToUser(fmt.Sprintf("Слишком продолжительное видео. Максимальное время видео - %d минут(ы)",
+		//srSettings.MaxDurationMinutes), msg.GetChannelId(), msg.GetUser())
+		SendMessageToChannel(fmt.Sprintf("Слишком продолжительное видео. Максимальное время видео - %d минут(ы)",
 			srSettings.MaxDurationMinutes), msg.GetChannelId(), msg.GetUser())
 		return
 	}
@@ -91,7 +94,11 @@ func srAdd(msg *ChatMsg, param string) {
 	}
 
 	if srSettings.MaxRequestsPerUser > 0 && count >= srSettings.MaxRequestsPerUser {
-		SendWhisperToUser(
+		/*SendWhisperToUser(
+		fmt.Sprintf("Ваши заказы уже в плейлисте. Не больше %d заказов от пользователя на плейлист",
+			settings.UsersSettings[msg.GetChannelId()].SongRequests.MaxRequestsPerUser),
+		msg.GetChannelId(), msg.GetUser())*/
+		SendMessageToChannel(
 			fmt.Sprintf("Ваши заказы уже в плейлисте. Не больше %d заказов от пользователя на плейлист",
 				settings.UsersSettings[msg.GetChannelId()].SongRequests.MaxRequestsPerUser),
 			msg.GetChannelId(), msg.GetUser())
@@ -119,7 +126,8 @@ func srAdd(msg *ChatMsg, param string) {
 	sr.Id = id
 
 	socketio.Emit(msg.GetChannelId(), socketio.SongRequestAdded, sr)
-	SendWhisperToUser("Реквест добавлен в очередь", msg.GetChannelId(), msg.GetUser())
+	//SendWhisperToUser("Реквест добавлен в очередь", msg.GetChannelId(), msg.GetUser())
+	SendMessageToChannel("Реквест добавлен в очередь", msg.GetChannelId(), msg.GetUser())
 }
 
 func srSetVolume(msg *ChatMsg, param string) {
@@ -130,7 +138,8 @@ func srSetVolume(msg *ChatMsg, param string) {
 		if err != nil {
 			return
 		}
-		SendWhisperToUser(fmt.Sprintf("Текущая громкость: %v%%", v), msg.GetChannelId(), msg.GetUser())
+		//SendWhisperToUser(fmt.Sprintf("Текущая громкость: %v%%", v), msg.GetChannelId(), msg.GetUser())
+		SendMessageToChannel(fmt.Sprintf("Текущая громкость: %v%%", v), msg.GetChannelId(), msg.GetUser())
 		return
 	case param[0] == '+' || param[0] == '-':
 		value := param[1:]
@@ -159,7 +168,8 @@ func srSetVolume(msg *ChatMsg, param string) {
 	}
 
 	socketio.Emit(msg.GetChannelId(), socketio.SongRequestSetVolume, vol)
-	SendWhisperToUser(fmt.Sprintf("Громкость реквестов установлена на %v%%", vol), msg.GetChannelId(), msg.GetUser())
+	//SendWhisperToUser(fmt.Sprintf("Громкость реквестов установлена на %v%%", vol), msg.GetChannelId(), msg.GetUser())
+	SendMessageToChannel(fmt.Sprintf("Громкость реквестов установлена на %v%%", vol), msg.GetChannelId(), msg.GetUser())
 }
 
 func srSkip(msg *ChatMsg, param string) {
@@ -182,7 +192,8 @@ func srDeleteSongRequest(msg *ChatMsg, param string) {
 	}
 
 	if currentSong.YT_ID == param {
-		SendWhisperToUser("Текущую песню можно только пропустить, для этого используйте команду пропуска", msg.GetChannelId(), msg.GetUser())
+		//SendWhisperToUser("Текущую песню можно только пропустить, для этого используйте команду пропуска", msg.GetChannelId(), msg.GetUser())
+		SendMessageToChannel("Текущую песню можно только пропустить, для этого используйте команду пропуска", msg.GetChannelId(), msg.GetUser())
 		return
 	}
 
@@ -207,11 +218,13 @@ func srCurrentSong(msg *ChatMsg, param string) {
 	}
 
 	if song.YT_ID == "" {
-		SendWhisperToUser("Сейчас ничего не играет", msg.GetChannelId(), msg.GetUser())
+		//SendWhisperToUser("Сейчас ничего не играет", msg.GetChannelId(), msg.GetUser())
+		SendMessageToChannel("Сейчас ничего не играет", msg.GetChannelId(), msg.GetUser())
 		return
 	}
 
-	SendWhisperToUser(fmt.Sprintf("Текущая песня: %s ( https://youtu.be/%s )", song.Title, song.YT_ID), msg.GetChannelId(), msg.GetUser())
+	//SendWhisperToUser(fmt.Sprintf("Текущая песня: %s ( https://youtu.be/%s )", song.Title, song.YT_ID), msg.GetChannelId(), msg.GetUser())
+	SendMessageToChannel(fmt.Sprintf("Текущая песня: %s ( https://youtu.be/%s )", song.Title, song.YT_ID), msg.GetChannelId(), msg.GetUser())
 }
 
 func srMySong(msg *ChatMsg, param string) {
@@ -225,10 +238,12 @@ func srMySong(msg *ChatMsg, param string) {
 		if song.By == msg.GetDisplayName() {
 			t := time.Duration(timeToMySong) * time.Second
 			if i == 0 {
-				SendWhisperToUser("Твой реквест играет прямо сейчас!", msg.GetChannelId(), msg.GetUser())
+				//SendWhisperToUser("Твой реквест играет прямо сейчас!", msg.GetChannelId(), msg.GetUser())
+				SendMessageToChannel("Твой реквест играет прямо сейчас!", msg.GetChannelId(), msg.GetUser())
 				break
 			}
-			SendWhisperToUser(fmt.Sprintf("До твоего реквеста %v (~%s)", i, fmtDuration(t)), msg.GetChannelId(), msg.GetUser())
+			//SendWhisperToUser(fmt.Sprintf("До твоего реквеста %v (~%s)", i, fmtDuration(t)), msg.GetChannelId(), msg.GetUser())
+			SendMessageToChannel(fmt.Sprintf("До твоего реквеста %v (~%s)", i, fmtDuration(t)), msg.GetChannelId(), msg.GetUser())
 			break
 		}
 		timeToMySong += song.Length
@@ -296,5 +311,6 @@ func availableCommands(msg *ChatMsg, param string) {
 		resCommands += "Текстовые команды: " + textCommandsSb.String()
 	}
 
-	SendWhisperToUser(resCommands, msg.GetChannelId(), msg.GetUser())
+	//SendWhisperToUser(resCommands, msg.GetChannelId(), msg.GetUser())
+	SendMessageToChannel(resCommands, msg.GetChannelId(), msg.GetUser())
 }
