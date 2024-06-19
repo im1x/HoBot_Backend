@@ -47,7 +47,7 @@ func Register(app *fiber.App) {
 	songRequest.Delete("/playlist/:id", handler.RemoveSong)
 
 	voting := api.Group("/voting")
-	voting.Get("/", handler.GetVotingStatus)
+	voting.Get("/", handler.GetVotingState)
 	voting.Post("/start", handler.StartVoting)
 	voting.Post("/stop", handler.StopVoting)
 

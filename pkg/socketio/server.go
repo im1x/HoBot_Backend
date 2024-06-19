@@ -22,6 +22,7 @@ const (
 	VotingStart           SocketEvent = "VotingStart"
 	VotingVote            SocketEvent = "VotingVote"
 	VotingStop            SocketEvent = "VotingStop"
+	VotingDelete          SocketEvent = "VotingDelete"
 )
 
 func Start() {

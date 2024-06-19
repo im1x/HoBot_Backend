@@ -3,7 +3,6 @@ package voting
 import (
 	"HoBot_Backend/pkg/socketio"
 	"fmt"
-	"strconv"
 	"time"
 )
 
@@ -17,40 +16,9 @@ type RatingResult struct {
 	Sum   int
 }
 
-type VotingData struct {
-	Type               byte
-	IsVotingInProgress bool
-	Title              string
-	VotingAnswers      map[string]int
-	AlreadyVoted       map[int]bool
-	ResultVoting       map[int]*VotingResult
-	ResultRating       *RatingResult
-	StopAt             time.Time
-	StopFunc           func()
-}
-
-func (v *VotingData) AddVote(userId int, option int) {
-	//if !v.HasVoted(userID) {
-	v.AlreadyVoted[userId] = true
-	if v.Type == 0 {
-		v.ResultVoting[option].Count += 1
-	} else {
-		v.ResultRating.Sum += option
-		v.ResultRating.Count += 1
-	}
-	fmt.Println("User ", userId, " voted for option ", option)
-	fmt.Println(v.ResultVoting)
-	//return
-	//}
-	//fmt.Println("User ", userID, " already voted")
-
-	socketio.Emit(strconv.Itoa(userId), socketio.VotingVote, fmt.Sprintf("User ", userId, " voted for option ", option))
-	fmt.Println(v.ResultVoting)
-
-}
-
-func (v *VotingData) HasVoted(userID int) bool {
-	return v.AlreadyVoted[userID]
+type Vote struct {
+	Name string `json:"name"`
+	Vote int    `json:"vote"`
 }
 
 type VotingRequest struct {
@@ -63,10 +31,49 @@ type VotingRequest struct {
 type VotingResponse struct {
 	Type               byte           `json:"type"`
 	IsVotingInProgress bool           `json:"isVotingInProgress"`
+	IsHaveResult       bool           `json:"isHaveResult"`
 	Title              string         `json:"title"`
 	ResultVoting       []VotingResult `json:"resultVoting"`
 	ResultRating       int            `json:"resultRating"`
 	StopAt             string         `json:"stopAt"`
+}
+
+type VotingData struct {
+	Type               byte
+	IsVotingInProgress bool
+	IsHaveResult       bool
+	Title              string
+	VotingAnswers      map[string]int
+	AlreadyVoted       map[int]bool
+	ResultVoting       map[int]*VotingResult
+	ResultRating       *RatingResult
+	StopAt             time.Time
+	StopFunc           func()
+}
+
+func (v *VotingData) AddVote(channelId string, userId int, userName string, option int) {
+	//if !v.HasVoted(userID) {
+	v.AlreadyVoted[userId] = true
+	if v.Type == 0 {
+		v.ResultVoting[option].Count += 1
+		socketio.Emit(channelId, socketio.VotingVote, &Vote{Name: userName, Vote: option})
+	} else {
+		v.ResultRating.Sum += option
+		v.ResultRating.Count += 1
+	}
+	fmt.Println("User ", userId, " voted for option ", option)
+	fmt.Println(v.ResultVoting)
+	//return
+	//}
+	//fmt.Println("User ", userID, " already voted")
+
+	//socketio.Emit(strconv.Itoa(userId), socketio.VotingVote, fmt.Sprintf("User ", userId, " voted for option ", option))
+	fmt.Println(v.ResultVoting)
+
+}
+
+func (v *VotingData) HasVoted(userID int) bool {
+	return v.AlreadyVoted[userID]
 }
 
 func (v *VotingData) ToResponse() VotingResponse {
@@ -85,6 +92,7 @@ func (v *VotingData) ToResponse() VotingResponse {
 	return VotingResponse{
 		Type:               v.Type,
 		IsVotingInProgress: v.IsVotingInProgress,
+		IsHaveResult:       v.IsHaveResult,
 		Title:              v.Title,
 		ResultVoting:       votingResult,
 		ResultRating:       rating,

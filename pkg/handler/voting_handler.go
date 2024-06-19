@@ -21,7 +21,7 @@ func StartVoting(c *fiber.Ctx) error {
 	return nil
 }
 
-func GetVotingStatus(c *fiber.Ctx) error {
+func GetVotingState(c *fiber.Ctx) error {
 	userId := parseUserIdFromRequest(c)
 	result := voting.GetVotingStatus(userId)
 	return c.JSON(result)

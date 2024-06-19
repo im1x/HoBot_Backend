@@ -11,6 +11,12 @@ import (
 var Voting = make(map[string]*VotingData)
 
 func StartVoting(userId string, votingRequest VotingRequest) {
+	if Voting[userId] != nil && Voting[userId].StopFunc != nil {
+		fmt.Println("StopFunc on start voting")
+		Voting[userId].StopFunc()
+		delete(Voting, userId)
+	}
+
 	votingAnswers := make(map[string]int)
 	votingResult := make(map[int]*VotingResult)
 	for i, option := range votingRequest.Options {
@@ -37,6 +43,7 @@ func StartVoting(userId string, votingRequest VotingRequest) {
 		Type:               votingRequest.Type,
 		Title:              votingRequest.Title,
 		IsVotingInProgress: true,
+		IsHaveResult:       true,
 		VotingAnswers:      votingAnswers,
 		ResultVoting:       votingResult,
 		ResultRating:       &RatingResult{Sum: 0, Count: 0},
@@ -64,9 +71,14 @@ func GetVotingStatus(userId string) VotingResponse {
 }
 
 func StopVoting(userId string) {
-	if Voting[userId] != nil {
-		Voting[userId].IsVotingInProgress = false
+	if Voting[userId] == nil {
+		fmt.Println("-----VOTING IS NULL-----")
+		return
 	}
+	//if Voting[userId] != nil {
+	Voting[userId].IsVotingInProgress = false
+	//}
+
 	/*if data, ok := Voting[userId]; ok {
 		data.IsVotingInProgress = false
 		Voting[userId] = data
@@ -76,9 +88,11 @@ func StopVoting(userId string) {
 		fmt.Println("StopFunc")
 		Voting[userId].StopFunc()
 	}
-	Voting[userId].StopFunc = task.CallAfterDuration(time.Minute*3, func() {
+	Voting[userId].StopFunc = task.CallAfterDuration(time.Minute*1, func() {
 		fmt.Println("Delete voting")
-		Voting[userId] = nil
+		delete(Voting, userId)
+		//Voting[userId] = nil
+		socketio.Emit(userId, socketio.VotingDelete, "")
 	})
 
 	socketio.Emit(userId, socketio.VotingStop, Voting[userId].ToResponse())

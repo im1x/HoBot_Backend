@@ -104,7 +104,7 @@ func listen() {
 
 				if voting.Voting[msg.GetChannelId()] != nil && voting.Voting[msg.GetChannelId()].IsVotingInProgress {
 					if value, isContained := voting.Voting[msg.GetChannelId()].VotingAnswers[alias]; isContained {
-						voting.Voting[msg.GetChannelId()].AddVote(msg.GetUser().ID, value)
+						voting.Voting[msg.GetChannelId()].AddVote(msg.GetChannelId(), msg.GetUser().ID, msg.GetUser().DisplayName, value)
 						continue
 					}
 				}
