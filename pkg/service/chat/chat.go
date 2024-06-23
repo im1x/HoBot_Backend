@@ -2,6 +2,7 @@ package chat
 
 import (
 	"HoBot_Backend/pkg/service/vkplay"
+	"HoBot_Backend/pkg/service/voting"
 	"bytes"
 	"encoding/json"
 	"fmt"
@@ -100,6 +101,14 @@ func listen() {
 				//fmt.Printf("%s: %s\n", msg.GetDisplayName(), trimSb)
 
 				alias, param := getAliasAndParamFromMessage(trimSb)
+
+				if voting.Voting[msg.GetChannelId()] != nil && voting.Voting[msg.GetChannelId()].IsVotingInProgress {
+					if value, isContained := voting.Voting[msg.GetChannelId()].VotingAnswers[alias]; isContained {
+						voting.Voting[msg.GetChannelId()].AddVote(msg.GetChannelId(), msg.GetUser().ID, msg.GetUser().DisplayName, value)
+						continue
+					}
+				}
+
 				if !hasAccess(alias, &msg) {
 					continue
 				}
