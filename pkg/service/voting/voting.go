@@ -52,7 +52,7 @@ func StartVoting(userId string, votingRequest VotingRequest) {
 		ResultVoting:       votingResult,
 		ResultRating:       &RatingResult{Sum: 0, Count: 0},
 		AlreadyVoted:       make(map[int]bool),
-		StopAt:             time.Now().Add(time.Minute * time.Duration(votingRequest.Duration)),
+		StopAt:             votingRequest.StopAt,
 		StopFunc:           stopFunc,
 	}
 

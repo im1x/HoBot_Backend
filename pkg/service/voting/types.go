@@ -2,7 +2,6 @@ package voting
 
 import (
 	"HoBot_Backend/pkg/socketio"
-	"time"
 )
 
 type VotingResult struct {
@@ -24,6 +23,7 @@ type VotingRequest struct {
 	Type     byte     `json:"type" validate:"oneof=0 1"`
 	Title    string   `json:"title"`
 	Duration int      `json:"duration" validate:"min=1,max=60"`
+	StopAt   string   `json:"stopAt" validate:"required"`
 	Options  []string `json:"options"`
 }
 
@@ -46,7 +46,7 @@ type VotingData struct {
 	AlreadyVoted       map[int]bool
 	ResultVoting       map[int]*VotingResult
 	ResultRating       *RatingResult
-	StopAt             time.Time
+	StopAt             string
 	StopFunc           func()
 }
 
@@ -82,6 +82,6 @@ func (v *VotingData) ToResponse() VotingResponse {
 		Title:              v.Title,
 		ResultVoting:       votingResult,
 		ResultRating:       *v.ResultRating,
-		StopAt:             v.StopAt.Format(time.RFC3339),
+		StopAt:             v.StopAt,
 	}
 }
