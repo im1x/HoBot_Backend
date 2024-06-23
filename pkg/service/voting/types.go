@@ -2,7 +2,6 @@ package voting
 
 import (
 	"HoBot_Backend/pkg/socketio"
-	"fmt"
 	"time"
 )
 
@@ -12,8 +11,8 @@ type VotingResult struct {
 }
 
 type RatingResult struct {
-	Count int
-	Sum   int
+	Count int `json:"count"`
+	Sum   int `json:"sum"`
 }
 
 type Vote struct {
@@ -22,9 +21,9 @@ type Vote struct {
 }
 
 type VotingRequest struct {
-	Type     byte
+	Type     byte     `json:"type" validate:"oneof=0 1"`
 	Title    string   `json:"title"`
-	Duration int      `json:"duration"`
+	Duration int      `json:"duration" validate:"min=1,max=60"`
 	Options  []string `json:"options"`
 }
 
@@ -34,7 +33,7 @@ type VotingResponse struct {
 	IsHaveResult       bool           `json:"isHaveResult"`
 	Title              string         `json:"title"`
 	ResultVoting       []VotingResult `json:"resultVoting"`
-	ResultRating       int            `json:"resultRating"`
+	ResultRating       RatingResult   `json:"resultRating"`
 	StopAt             string         `json:"stopAt"`
 }
 
@@ -52,24 +51,16 @@ type VotingData struct {
 }
 
 func (v *VotingData) AddVote(channelId string, userId int, userName string, option int) {
-	//if !v.HasVoted(userID) {
-	v.AlreadyVoted[userId] = true
-	if v.Type == 0 {
-		v.ResultVoting[option].Count += 1
+	if !v.HasVoted(userId) {
+		v.AlreadyVoted[userId] = true
+		if v.Type == 0 {
+			v.ResultVoting[option].Count += 1
+		} else {
+			v.ResultRating.Sum += option
+			v.ResultRating.Count += 1
+		}
 		socketio.Emit(channelId, socketio.VotingVote, &Vote{Name: userName, Vote: option})
-	} else {
-		v.ResultRating.Sum += option
-		v.ResultRating.Count += 1
 	}
-	fmt.Println("User ", userId, " voted for option ", option)
-	fmt.Println(v.ResultVoting)
-	//return
-	//}
-	//fmt.Println("User ", userID, " already voted")
-
-	//socketio.Emit(strconv.Itoa(userId), socketio.VotingVote, fmt.Sprintf("User ", userId, " voted for option ", option))
-	fmt.Println(v.ResultVoting)
-
 }
 
 func (v *VotingData) HasVoted(userID int) bool {
@@ -78,15 +69,10 @@ func (v *VotingData) HasVoted(userID int) bool {
 
 func (v *VotingData) ToResponse() VotingResponse {
 	votingResult := make([]VotingResult, 0, len(v.ResultVoting))
-
-	//for _, result := range v.ResultVoting {
-	for i := 1; i <= len(v.ResultVoting); i++ {
-		votingResult = append(votingResult, *v.ResultVoting[i])
-	}
-
-	rating := 0
-	if v.ResultRating.Count != 0 {
-		rating = v.ResultRating.Sum / v.ResultRating.Count
+	if v.Type == 0 {
+		for i := 1; i <= len(v.ResultVoting); i++ {
+			votingResult = append(votingResult, *v.ResultVoting[i])
+		}
 	}
 
 	return VotingResponse{
@@ -95,7 +81,7 @@ func (v *VotingData) ToResponse() VotingResponse {
 		IsHaveResult:       v.IsHaveResult,
 		Title:              v.Title,
 		ResultVoting:       votingResult,
-		ResultRating:       rating,
+		ResultRating:       *v.ResultRating,
 		StopAt:             v.StopAt.Format(time.RFC3339),
 	}
 }
