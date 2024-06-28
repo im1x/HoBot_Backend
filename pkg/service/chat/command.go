@@ -225,10 +225,10 @@ func srMySong(msg *ChatMsg, param string) {
 		if song.By == msg.GetDisplayName() {
 			t := time.Duration(timeToMySong) * time.Second
 			if i == 0 {
-				SendWhisperToUser("Твой реквест играет прямо сейчас!", msg.GetChannelId(), msg.GetUser())
+				SendWhisperToUser("Твоя песня играет прямо сейчас!", msg.GetChannelId(), msg.GetUser())
 				break
 			}
-			SendWhisperToUser(fmt.Sprintf("До твоего реквеста %v (~%s)", i, fmtDuration(t)), msg.GetChannelId(), msg.GetUser())
+			SendWhisperToUser(fmt.Sprintf("До твоей песни %v (~%s)", i, fmtDuration(t)), msg.GetChannelId(), msg.GetUser())
 			break
 		}
 		timeToMySong += song.Length
