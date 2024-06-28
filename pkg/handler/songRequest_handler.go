@@ -3,6 +3,7 @@ package handler
 import (
 	"HoBot_Backend/pkg/service/chat"
 	"HoBot_Backend/pkg/service/songRequest"
+	"HoBot_Backend/pkg/service/vkplay"
 	"fmt"
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/log"
@@ -16,7 +17,7 @@ func PlaylistByStreamer(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusBadRequest).JSON("Streamer is empty")
 	}
 
-	userId, err := songRequest.GetUserIdByName(streamer)
+	userId, err := vkplay.GetUserIdByName(streamer)
 	if err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(err.Error())
 	}

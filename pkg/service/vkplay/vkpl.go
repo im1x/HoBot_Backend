@@ -16,6 +16,7 @@ import (
 	"net/http/cookiejar"
 	"net/url"
 	"os"
+	"strconv"
 	"time"
 )
 
@@ -326,4 +327,41 @@ func getCommandsFromDB() {
 	}
 
 	ChannelsCommands = cmds
+}
+
+func GetUserIdByName(user string) (string, error) {
+	req, err := http.NewRequest("GET", fmt.Sprintf("https://api.live.vkplay.ru/v1/blog/%s/public_video_stream/chat/user/", user), nil)
+	if err != nil {
+		log.Error("Error while getting user id by name:", err)
+	}
+
+	client := http.Client{}
+	resp, err := client.Do(req)
+	if err != nil {
+		log.Error("Error while getting user id by name:", err)
+	}
+	defer resp.Body.Close()
+
+	type StreamerInfo struct {
+		Data struct {
+			Owner struct {
+				ID int `json:"id"`
+			} `json:"owner"`
+		} `json:"data"`
+	}
+
+	var streamerInfo StreamerInfo
+	b, err := io.ReadAll(resp.Body)
+	if err != nil {
+		log.Error("Error while reading user info:", err)
+		return "", nil
+	}
+
+	err = json.Unmarshal(b, &streamerInfo)
+	if err != nil {
+		return "Error while unmarshal user info:", err
+	}
+
+	return strconv.Itoa(streamerInfo.Data.Owner.ID), nil
+
 }
