@@ -3,6 +3,7 @@ package voting
 import (
 	"HoBot_Backend/pkg/socketio"
 	"HoBot_Backend/pkg/task"
+	"github.com/gofiber/fiber/v2/log"
 	"strconv"
 	"time"
 )
@@ -79,6 +80,8 @@ func StopVoting(userId string) {
 		delete(Voting, userId)
 		socketio.Emit(userId, socketio.VotingDelete, "")
 	})
+
+	log.Infof("Voting stopped: %+v ", Voting[userId].ToResponse())
 
 	socketio.Emit(userId, socketio.VotingStop, Voting[userId].ToResponse())
 }
