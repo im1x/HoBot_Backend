@@ -209,7 +209,7 @@ func SendMessageToChannel(msgText string, channel string, mention *User) {
 
 	if resp.StatusCode != 200 {
 		rd, _ := io.ReadAll(resp.Body)
-		log.Error(string(rd))
+		log.Error("Error while sending message to channel ", channel, ": ", string(rd))
 	}
 }
 
