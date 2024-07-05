@@ -128,7 +128,8 @@ func listen() {
 func SendMessageToChannel(msgText string, channel string, mention *User) {
 	var msg []interface{}
 	msgTextClear := prepareStringForSend(msgText)
-	if len(msgTextClear) > 495 {
+	if len([]rune(msgTextClear)) > 495 {
+		log.Info("Too long message: (", len([]rune(msgTextClear)), ") ", msgTextClear)
 		msgTextClear = "Невозможно отобразить, слишком длинное сообщение."
 	}
 
@@ -214,7 +215,27 @@ func SendMessageToChannel(msgText string, channel string, mention *User) {
 }
 
 func SendWhisperToUser(msgText string, channel string, user *User) {
-	SendMessageToChannel("/w "+user.DisplayName+" "+msgText, channel, nil)
+	displayNameRunes := []rune(user.DisplayName)
+	overhead := len(displayNameRunes) + 4 // 4 accounts for "/w " and a space
+
+	const maxMessageLength = 495
+	maxSegmentLength := maxMessageLength - overhead
+
+	runes := []rune(msgText)
+
+	if len(runes) <= maxSegmentLength {
+		SendMessageToChannel("/w "+user.DisplayName+" "+msgText, channel, user)
+		return
+	}
+
+	for i := 0; i < len(runes); i += maxSegmentLength {
+		to := i + maxSegmentLength
+		if to > len(runes) {
+			to = len(runes)
+		}
+		segment := string(runes[i:to])
+		SendMessageToChannel("/w "+user.DisplayName+" "+segment, channel, user)
+	}
 }
 
 func AddUserToWs(userId string) error {
