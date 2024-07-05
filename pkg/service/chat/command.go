@@ -296,5 +296,9 @@ func availableCommands(msg *ChatMsg, param string) {
 		resCommands += "Текстовые команды: " + textCommandsSb.String()
 	}
 
+	if accessLevel > 0 {
+		resCommands += " | Помощь по командам - https://hobot.alwaysdata.net/p/help"
+	}
+
 	SendWhisperToUser(resCommands, msg.GetChannelId(), msg.GetUser())
 }
