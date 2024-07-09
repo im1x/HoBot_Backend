@@ -255,7 +255,7 @@ func AddUserToWs(userId string) error {
 		return err
 	}
 
-	SendMessageToChannel("Бот подключился к чату. Для нормальной работы боту необходимы права модератора.", userId, nil)
+	SendMessageToChannel("Бот подключился к чату. Для нормальной работы боту необходимы права модератора. Выдать права боту можно командой \"/mod HоBOT\"", userId, nil)
 
 	return nil
 }
