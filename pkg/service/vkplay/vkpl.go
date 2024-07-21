@@ -17,6 +17,7 @@ import (
 	"net/url"
 	"os"
 	"strconv"
+	"strings"
 	"time"
 )
 
@@ -211,20 +212,14 @@ func refreshVkplToken() error {
 		Jar: jar,
 	}
 
-	loginURL := "https://auth-ac.vkplay.ru/sign_in"
-	loginData := url.Values{
-		"login":                {os.Getenv("VKPL_LOGIN")},
-		"password":             {os.Getenv("VKPL_PASSWORD")},
-		"continue":             {"https://account.vkplay.ru/oauth2/?client_id=vkplay.live&response_type=code&skip_grants=1&state=%7B%22unregId%22%3A%22streams_web%3A75c4625e-0231-466c-a023-74db07d45ea0%22%2C%22from%22%3A%22%22%2C%22redirectAppId%22%3A%22streams_web%22%7D%2A%2A%2A-%2A%2A%2Avkplay&redirect_uri=https%3A%2F%2Flive.vkplay.ru%2Fapp%2Foauth_redirect"},
-		"failure":              {"https://account.vkplay.ru/oauth2/login/?continue=https%3A%2F%2Faccount.vkplay.ru%2Foauth2%2Flogin%2F%3Fcontinue%3Dhttps%253A%252F%252Faccount.vkplay.ru%252Foauth2%252F%253Fclient_id%253Dlive.vkplay.ru%2526response_type%253Dcode%2526skip_grants%253D1%2526state%253D%25257B%252522unregId%252522%25253A%252522streams_web%25253A75c4625e-0231-466c-a023-74db07d45ea0%252522%25252C%252522from%252522%25253A%252522%252522%25252C%252522redirectAppId%252522%25253A%252522streams_web%252522%25257D%25252A%25252A%25252A-%25252A%25252A%25252Avkplay%2526redirect_uri%253Dhttps%25253A%25252F%25252Flive.vkplay.ru%25252Fapp%25252Foauth_redirect%26client_id%3Dlive.vkplay.ru%26lang%3Dru_RU&client_id=live.vkplay.ru&lang=ru_RU"},
-		"g-recaptcha-response": {""},
-	}
-
-	req, err := http.NewRequest("POST", loginURL, bytes.NewBufferString(loginData.Encode()))
+	// Init
+	initURL := "https://auth-ac.vkplay.ru/api/v3/pub/auth/init"
+	initJson := []byte(`{"csrfmiddlewaretoken":"","login":"` + os.Getenv("VKPL_LOGIN") + `","continue":"https://account.vkplay.ru/oauth2/?client_id=vkplay.live&response_type=code&skip_grants=1&state=%7B%22unregId%22%3A%22streams_web%3A83965df1-4f24-4c4d-a2d0-2b6c08b0f35f%22%2C%22from%22%3A%22%22%2C%22redirectAppId%22%3A%22streams_web%22%7D%2A%2A%2A-%2A%2A%2Avkplay&redirect_uri=https%3A%2F%2Fauth.live.vkplay.ru%2Fapp%2Foauth_redirect%3Ffrom%3Dvkplay_live","failure":"https://account.vkplay.ru/oauth2/login/?continue=https%3A%2F%2Faccount.vkplay.ru%2Foauth2%2Flogin%2F%3Fcontinue%3Dhttps%253A%252F%252Faccount.vkplay.ru%252Foauth2%252F%253Fclient_id%253Dvkplay.live%2526response_type%253Dcode%2526skip_grants%253D1%2526state%253D%25257B%252522unregId%252522%25253A%252522streams_web%25253A83965df1-4f24-4c4d-a2d0-2b6c08b0f35f%252522%25252C%252522from%252522%25253A%252522%252522%25252C%252522redirectAppId%252522%25253A%252522streams_web%252522%25257D%25252A%25252A%25252A-%25252A%25252A%25252Avkplay%2526redirect_uri%253Dhttps%25253A%25252F%25252Fauth.live.vkplay.ru%25252Fapp%25252Foauth_redirect%25253Ffrom%25253Dvkplay_live%26client_id%3Dvkplay.live%26lang%3Dru_RU&client_id=vkplay.live&lang=ru_RU"}`)
+	req, err := http.NewRequest("POST", initURL, bytes.NewBuffer(initJson))
 	if err != nil {
 		return err
 	}
-	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	req.Header.Set("Content-Type", "application/json; charset=utf-8")
 	req.Header.Set("Origin", "https://account.vkplay.ru")
 	req.Header.Set("Referer", "https://account.vkplay.ru")
 
@@ -232,15 +227,116 @@ func refreshVkplToken() error {
 	if err != nil {
 		return err
 	}
+
+	rd, err := io.ReadAll(resp.Body)
+	if err != nil {
+		log.Error("INIT: Error while reading response body:", err)
+		return err
+	}
+
+	if resp.StatusCode != 200 {
+		log.Error("INIT: Error while refreshing token:", err)
+		log.Error("Status code:", resp.StatusCode)
+		log.Error("Status:", resp.Status)
+		log.Error("Response body:", string(rd))
+		return fmt.Errorf("status code: %d", resp.StatusCode)
+	}
 	defer resp.Body.Close()
 
+	var initRes map[string]interface{}
+	err = json.Unmarshal(rd, &initRes)
+	if err != nil {
+		return err
+	}
+	initToken := initRes["token"].(string)
+
+	// Login
+	loginURL := "https://auth-ac.vkplay.ru/api/v3/pub/auth/verify"
+	loginData := map[string]string{
+		"csrfmiddlewaretoken": "",
+		"login":               os.Getenv("VKPL_LOGIN"),
+		"password":            os.Getenv("VKPL_PASSWORD"),
+		"token":               initToken,
+	}
+
+	loginJson, err := json.Marshal(loginData)
+	if err != nil {
+		fmt.Println("Error marshaling JSON:", err)
+		return err
+	}
+
+	req, err = http.NewRequest("POST", loginURL, bytes.NewBuffer(loginJson))
+	if err != nil {
+		return err
+	}
+	req.Header.Set("Content-Type", "application/json; charset=utf-8")
+	req.Header.Set("Origin", "https://account.vkplay.ru")
+	req.Header.Set("Referer", "https://account.vkplay.ru")
+
+	resp, err = client.Do(req)
+	if err != nil {
+		return err
+	}
+
+	rd, err = io.ReadAll(resp.Body)
+	if err != nil {
+		log.Error("LOGIN: Error while reading response body:", err)
+		return err
+	}
+
+	if resp.StatusCode != 200 {
+		log.Error("LOGIN: Error while refreshing token:", err)
+		log.Error("Status code:", resp.StatusCode)
+		log.Error("Status:", resp.Status)
+		log.Error("Response body:", string(rd))
+		return fmt.Errorf("status code: %d", resp.StatusCode)
+	}
+
+	defer resp.Body.Close()
+
+	var redirectRes map[string]interface{}
+	err = json.Unmarshal(rd, &redirectRes)
+	if err != nil {
+		return err
+	}
+	redirectUrl := redirectRes["auth_redirect"].(string)
+	redirectUrl = strings.ReplaceAll(redirectUrl, `\u0026`, "&")
+
+	// Redirect
+	req, err = http.NewRequest("GET", redirectUrl, nil)
+	if err != nil {
+		return err
+	}
+	req.Header.Set("Origin", "https://account.vkplay.ru")
+	req.Header.Set("Referer", "https://account.vkplay.ru")
+
+	resp, err = client.Do(req)
+	if err != nil {
+		return err
+	}
+	rd, err = io.ReadAll(resp.Body)
+	if err != nil {
+		log.Error("REDIRECT: Error while reading response body:", err)
+		return err
+	}
+
+	if resp.StatusCode >= 400 {
+		log.Error("REDIRECT: Error while refreshing token:", err)
+		log.Error("Status code:", resp.StatusCode)
+		log.Error("Status:", resp.Status)
+		log.Error("Response body:", string(rd))
+		return err
+	}
+
+	defer resp.Body.Close()
+
+	// Get cookies
 	urlVkpl, _ := url.Parse("https://live.vkplay.ru")
 	cookies := jar.Cookies(urlVkpl)
 
 	var authResponse AuthResponse
 	var tmpClientID string
 	for _, cookie := range cookies {
-		fmt.Printf("cookie: %v\n", cookie)
 		if cookie.Name == "_clientId" {
 			tmpClientID = cookie.Value
 			continue
@@ -255,7 +351,6 @@ func refreshVkplToken() error {
 		}
 	}
 	authResponse.ClientID = tmpClientID
-
 	AuthVkpl = authResponse
 	return nil
 }
