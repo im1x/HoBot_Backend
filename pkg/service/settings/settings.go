@@ -38,8 +38,15 @@ func LoadSettings() {
 
 func SaveSongRequestSettings(ctx context.Context, userId string, songReqSettings SongRequestsSettings) error {
 	userSetting := UsersSettings[userId]
+
+	if !userSetting.SongRequests.IsUsersSkipAllowed && songReqSettings.IsUsersSkipAllowed {
+		AddUsersSkipCommands(ctx, userId)
+		//songRequest.InitUsersSkipIfNeeded(userId)
+	}
+
 	userSetting.SongRequests = songReqSettings
 	UsersSettings[userId] = userSetting
+
 	_, err := DB.GetCollection(DB.UserSettings).UpdateByID(ctx, userId, bson.M{"$set": bson.M{"song_requests": songReqSettings}})
 	if err != nil {
 		log.Error("Error while saving song request settings:", err)
@@ -297,4 +304,38 @@ func ChangeVolumeBy(userId string, volume int) (int, error) {
 	}
 
 	return vol, nil
+}
+
+func AddUsersSkipCommands(ctx context.Context, userId string) {
+	votingCommands := map[string]bool{
+		"SR_UsersSkipSongYes": true,
+		"SR_UsersSkipSongNo":  true,
+	}
+
+	for _, alias := range UsersSettings[userId].Aliases {
+		if _, exists := votingCommands[alias.Command]; exists {
+			votingCommands[alias.Command] = false
+		}
+	}
+
+	if _, exists := votingCommands["SR_UsersSkipSongYes"]; exists {
+		vkplay.ChannelsCommands.Channels[userId].Aliases["!фу"] = vkplay.CmdDetails{
+			Command:     "SR_UsersSkipSongYes",
+			AccessLevel: 0,
+			Payload:     "",
+		}
+	}
+
+	if _, exists := votingCommands["SR_UsersSkipSongNo"]; exists {
+		vkplay.ChannelsCommands.Channels[userId].Aliases["!деф"] = vkplay.CmdDetails{
+			Command:     "SR_UsersSkipSongNo",
+			AccessLevel: 0,
+			Payload:     "",
+		}
+	}
+
+	_, err := DB.GetCollection(DB.UserSettings).UpdateByID(ctx, userId, bson.M{"$set": bson.M{"aliases": vkplay.ChannelsCommands.Channels[userId].Aliases}})
+	if err != nil {
+		log.Error("Error while adding users skip commands:", err)
+	}
 }

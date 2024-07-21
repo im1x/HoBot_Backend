@@ -33,6 +33,8 @@ func init() {
 	addCommand("SR_PlayPause", srPlayPause)
 	addCommand("SR_CurrentSong", srCurrentSong)
 	addCommand("SR_MySong", srMySong)
+	addCommand("SR_UsersSkipSongYes", srUsersSkipSongYes)
+	addCommand("SR_UsersSkipSongNo", srUsersSkipSongNo)
 	addCommand("Print_Text", printText)
 	addCommand("Available_Commands", availableCommands)
 }
@@ -233,6 +235,29 @@ func srMySong(msg *ChatMsg, param string) {
 		}
 		timeToMySong += song.Length
 	}
+}
+
+func srUsersSkipSongYes(msg *ChatMsg, param string) {
+	if !settings.UsersSettings[msg.GetChannelId()].SongRequests.IsUsersSkipAllowed {
+		return
+	}
+	isSkipped := songRequest.VotesForSkipYes(msg.GetChannelId(), msg.GetUser().ID)
+
+	if !isSkipped {
+		socketio.Emit(msg.GetChannelId(), socketio.SongRequestSkipSong, "")
+		SendMessageToChannel(msg.GetDisplayName()+" пропустил реквест", msg.GetChannelId(), nil)
+		fmt.Println("VOTE YES")
+		fmt.Printf("VOTES: %#v\n", songRequest.VotesForSkip)
+	}
+}
+
+func srUsersSkipSongNo(msg *ChatMsg, param string) {
+	if !settings.UsersSettings[msg.GetChannelId()].SongRequests.IsUsersSkipAllowed {
+		return
+	}
+	songRequest.VotesForSkip[msg.GetChannelId()].VoteNo(msg.GetUser().ID)
+	fmt.Println("VOTE NO")
+	fmt.Println(songRequest.VotesForSkip)
 }
 
 func printText(msg *ChatMsg, param string) {

@@ -1,6 +1,9 @@
 package songRequest
 
-import "go.mongodb.org/mongo-driver/bson/primitive"
+import (
+	"go.mongodb.org/mongo-driver/bson/primitive"
+	"sync"
+)
 
 type SongRequest struct {
 	Id        primitive.ObjectID `json:"id" bson:"_id,omitempty"`
@@ -13,4 +16,33 @@ type SongRequest struct {
 	Views     int                `json:"views" bson:"views"`
 	Start     int                `json:"start" bson:"start"`
 	End       int                `json:"end" bson:"end"`
+}
+
+type VotesForSkipSong struct {
+	Count        int
+	AlreadyVoted map[int]bool
+	sync.Mutex
+}
+
+func (v *VotesForSkipSong) VoteYes(userId int) {
+	if !v.HasVoted(userId) {
+		v.Lock()
+		v.AlreadyVoted[userId] = true
+		v.Count += 1
+		v.Unlock()
+	}
+
+}
+
+func (v *VotesForSkipSong) VoteNo(userId int) {
+	if !v.HasVoted(userId) {
+		v.Lock()
+		v.AlreadyVoted[userId] = true
+		v.Count -= 1
+		v.Unlock()
+	}
+}
+
+func (v *VotesForSkipSong) HasVoted(userId int) bool {
+	return v.AlreadyVoted[userId]
 }

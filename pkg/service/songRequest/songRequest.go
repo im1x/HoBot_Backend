@@ -2,6 +2,7 @@ package songRequest
 
 import (
 	DB "HoBot_Backend/pkg/mongo"
+	"HoBot_Backend/pkg/service/settings"
 	"context"
 	"errors"
 	"github.com/gofiber/fiber/v2/log"
@@ -11,6 +12,8 @@ import (
 	"go.mongodb.org/mongo-driver/mongo/options"
 	"time"
 )
+
+var VotesForSkip = make(map[string]*VotesForSkipSong)
 
 func AddSongRequestToDB(songRequest SongRequest) (primitive.ObjectID, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
@@ -233,4 +236,31 @@ func CountSongsByUser(channelId string, userName string) (int, error) {
 		return 0, err
 	}
 	return int(res), nil
+}
+
+func InitUsersSkipIfNeeded(userId string) {
+	if VotesForSkip[userId] == nil {
+		VotesForSkip[userId] = &VotesForSkipSong{
+			AlreadyVoted: make(map[int]bool),
+		}
+	}
+}
+
+func VotesForSkipYes(channelId string, userId int) bool {
+	InitUsersSkipIfNeeded(channelId)
+	VotesForSkip[channelId].VoteYes(userId)
+
+	if VotesForSkip[channelId].Count >= settings.UsersSettings[channelId].SongRequests.UsersSkipValue {
+		err := SkipSong(channelId)
+		if err != nil {
+			return true
+		}
+	}
+
+	return false
+}
+
+func VotesForSkipNo(channelId string, userId int) {
+	InitUsersSkipIfNeeded(channelId)
+	VotesForSkip[channelId].VoteNo(userId)
 }
