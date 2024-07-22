@@ -312,13 +312,13 @@ func AddUsersSkipCommands(ctx context.Context, userId string) {
 		"SR_UsersSkipSongNo":  true,
 	}
 
-	for _, alias := range UsersSettings[userId].Aliases {
+	for _, alias := range vkplay.ChannelsCommands.Channels[userId].Aliases {
 		if _, exists := votingCommands[alias.Command]; exists {
 			votingCommands[alias.Command] = false
 		}
 	}
 
-	if _, exists := votingCommands["SR_UsersSkipSongYes"]; exists {
+	if value, exists := votingCommands["SR_UsersSkipSongYes"]; exists && value {
 		vkplay.ChannelsCommands.Channels[userId].Aliases["!фу"] = vkplay.CmdDetails{
 			Command:     "SR_UsersSkipSongYes",
 			AccessLevel: 0,
@@ -326,7 +326,7 @@ func AddUsersSkipCommands(ctx context.Context, userId string) {
 		}
 	}
 
-	if _, exists := votingCommands["SR_UsersSkipSongNo"]; exists {
+	if value, exists := votingCommands["SR_UsersSkipSongNo"]; exists && value {
 		vkplay.ChannelsCommands.Channels[userId].Aliases["!деф"] = vkplay.CmdDetails{
 			Command:     "SR_UsersSkipSongNo",
 			AccessLevel: 0,

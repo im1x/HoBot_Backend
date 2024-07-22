@@ -89,7 +89,6 @@ func listen() {
 						}
 						sb.WriteString(content[0].(string))
 					} else if d.Type == "smile" {
-						fmt.Println("Smile: ", d.Name)
 						sb.WriteString(d.Name)
 					}
 				}

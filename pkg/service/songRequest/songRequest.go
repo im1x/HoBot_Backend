@@ -155,6 +155,11 @@ func SkipSong(channelId string) error {
 		log.Error("Error while deleting song request:", result.Err())
 		return result.Err()
 	}*/
+
+	if settings.UsersSettings[channelId].SongRequests.IsUsersSkipAllowed {
+		VotesForSkip[channelId] = nil
+	}
+
 	return nil
 }
 
@@ -253,8 +258,9 @@ func VotesForSkipYes(channelId string, userId int) bool {
 	if VotesForSkip[channelId].Count >= settings.UsersSettings[channelId].SongRequests.UsersSkipValue {
 		err := SkipSong(channelId)
 		if err != nil {
-			return true
+			return false
 		}
+		return true
 	}
 
 	return false
