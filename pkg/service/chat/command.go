@@ -254,8 +254,6 @@ func srUsersSkipSongNo(msg *ChatMsg, param string) {
 		return
 	}
 	songRequest.VotesForSkipNo(msg.GetChannelId(), msg.GetUser().ID)
-	fmt.Println("VOTE NO")
-	fmt.Printf("VOTES: %#v\n", songRequest.VotesForSkip[msg.GetChannelId()].Count)
 }
 
 func printText(msg *ChatMsg, param string) {
