@@ -241,11 +241,26 @@ func srUsersSkipSongYes(msg *ChatMsg, param string) {
 	if !settings.UsersSettings[msg.GetChannelId()].SongRequests.IsUsersSkipAllowed {
 		return
 	}
+
+	if songRequest.VotesForSkip[msg.GetChannelId()] != nil {
+		if songRequest.VotesForSkip[msg.GetChannelId()].AlreadyVoted[msg.GetUser().ID] == false {
+			log.Infof("%s voted SKIP.(%d/%d)\n", msg.GetDisplayName(), songRequest.VotesForSkip[msg.GetChannelId()].Count+1, settings.UsersSettings[msg.GetChannelId()].SongRequests.UsersSkipValue)
+		}
+	} else {
+		log.Infof("%s voted SKIP.(%d/%d)\n", msg.GetDisplayName(), 1, settings.UsersSettings[msg.GetChannelId()].SongRequests.UsersSkipValue)
+	}
+
 	isSkipped := songRequest.VotesForSkipYes(msg.GetChannelId(), msg.GetUser().ID)
 
 	if isSkipped {
 		socketio.Emit(msg.GetChannelId(), socketio.SongRequestSkipSong, "")
 		SendMessageToChannel("Зрители пропустили реквест", msg.GetChannelId(), nil)
+		log.Info("Skipped song by users")
+		return
+	}
+
+	if songRequest.VotesForSkip[msg.GetChannelId()].Count == (settings.UsersSettings[msg.GetChannelId()].SongRequests.UsersSkipValue / 2) {
+		SendMessageToChannel(fmt.Sprintf("Набрано голосов для пропуска песни: %d/%d", songRequest.VotesForSkip[msg.GetChannelId()].Count, settings.UsersSettings[msg.GetChannelId()].SongRequests.UsersSkipValue), msg.GetChannelId(), nil)
 	}
 }
 
@@ -253,6 +268,15 @@ func srUsersSkipSongNo(msg *ChatMsg, param string) {
 	if !settings.UsersSettings[msg.GetChannelId()].SongRequests.IsUsersSkipAllowed {
 		return
 	}
+
+	if songRequest.VotesForSkip[msg.GetChannelId()] != nil {
+		if songRequest.VotesForSkip[msg.GetChannelId()].AlreadyVoted[msg.GetUser().ID] == false {
+			log.Infof("%s voted DEF.(%d/%d)\n", msg.GetDisplayName(), songRequest.VotesForSkip[msg.GetChannelId()].Count-1, settings.UsersSettings[msg.GetChannelId()].SongRequests.UsersSkipValue)
+		}
+	} else {
+		log.Infof("%s voted DEF.(%d/%d)\n", msg.GetDisplayName(), -1, settings.UsersSettings[msg.GetChannelId()].SongRequests.UsersSkipValue)
+	}
+
 	songRequest.VotesForSkipNo(msg.GetChannelId(), msg.GetUser().ID)
 }
 
