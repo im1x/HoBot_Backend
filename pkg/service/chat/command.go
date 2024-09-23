@@ -238,13 +238,14 @@ func srMySong(msg *ChatMsg, param string) {
 }
 
 func srUsersSkipSongYes(msg *ChatMsg, param string) {
+	log.Info("Triggered skip song by " + msg.GetDisplayName())
 	if !settings.UsersSettings[msg.GetChannelId()].SongRequests.IsUsersSkipAllowed {
 		return
 	}
 
 	if songRequest.VotesForSkip[msg.GetChannelId()] != nil {
-		if songRequest.VotesForSkip[msg.GetChannelId()].AlreadyVoted[msg.GetUser().ID] == false {
-			log.Infof("%s voted SKIP.(%d/%d)\n", msg.GetDisplayName(), songRequest.VotesForSkip[msg.GetChannelId()].Count+1, settings.UsersSettings[msg.GetChannelId()].SongRequests.UsersSkipValue)
+		if !songRequest.VotesForSkip[msg.GetChannelId()].HasVoted(msg.GetUser().ID) {
+			log.Infof("%s voted SKIP.(%d/%d)\n", msg.GetDisplayName(), songRequest.VotesForSkip[msg.GetChannelId()].GetCount()+1, settings.UsersSettings[msg.GetChannelId()].SongRequests.UsersSkipValue)
 		}
 	} else {
 		log.Infof("%s voted SKIP.(%d/%d)\n", msg.GetDisplayName(), 1, settings.UsersSettings[msg.GetChannelId()].SongRequests.UsersSkipValue)
@@ -259,19 +260,20 @@ func srUsersSkipSongYes(msg *ChatMsg, param string) {
 		return
 	}
 
-	if songRequest.VotesForSkip[msg.GetChannelId()].Count == (settings.UsersSettings[msg.GetChannelId()].SongRequests.UsersSkipValue / 2) {
-		SendMessageToChannel(fmt.Sprintf("Набрано голосов для пропуска песни: %d/%d", songRequest.VotesForSkip[msg.GetChannelId()].Count, settings.UsersSettings[msg.GetChannelId()].SongRequests.UsersSkipValue), msg.GetChannelId(), nil)
+	if songRequest.VotesForSkip[msg.GetChannelId()].GetCount() == (settings.UsersSettings[msg.GetChannelId()].SongRequests.UsersSkipValue / 2) {
+		SendMessageToChannel(fmt.Sprintf("Набрано голосов для пропуска песни: %d/%d", songRequest.VotesForSkip[msg.GetChannelId()].GetCount(), settings.UsersSettings[msg.GetChannelId()].SongRequests.UsersSkipValue), msg.GetChannelId(), nil)
 	}
 }
 
 func srUsersSkipSongNo(msg *ChatMsg, param string) {
+	log.Info("Triggered def song by " + msg.GetDisplayName())
 	if !settings.UsersSettings[msg.GetChannelId()].SongRequests.IsUsersSkipAllowed {
 		return
 	}
 
 	if songRequest.VotesForSkip[msg.GetChannelId()] != nil {
-		if songRequest.VotesForSkip[msg.GetChannelId()].AlreadyVoted[msg.GetUser().ID] == false {
-			log.Infof("%s voted DEF.(%d/%d)\n", msg.GetDisplayName(), songRequest.VotesForSkip[msg.GetChannelId()].Count-1, settings.UsersSettings[msg.GetChannelId()].SongRequests.UsersSkipValue)
+		if !songRequest.VotesForSkip[msg.GetChannelId()].HasVoted(msg.GetUser().ID) {
+			log.Infof("%s voted DEF.(%d/%d)\n", msg.GetDisplayName(), songRequest.VotesForSkip[msg.GetChannelId()].GetCount()-1, settings.UsersSettings[msg.GetChannelId()].SongRequests.UsersSkipValue)
 		}
 	} else {
 		log.Infof("%s voted DEF.(%d/%d)\n", msg.GetDisplayName(), -1, settings.UsersSettings[msg.GetChannelId()].SongRequests.UsersSkipValue)

@@ -25,24 +25,34 @@ type VotesForSkipSong struct {
 }
 
 func (v *VotesForSkipSong) VoteYes(userId int) {
-	if !v.HasVoted(userId) {
-		v.Lock()
-		v.AlreadyVoted[userId] = true
-		v.Count += 1
-		v.Unlock()
-	}
+	v.Lock()
+	defer v.Unlock()
 
+	if !v.AlreadyVoted[userId] {
+		v.AlreadyVoted[userId] = true
+		v.Count++
+	}
 }
 
 func (v *VotesForSkipSong) VoteNo(userId int) {
-	if !v.HasVoted(userId) {
-		v.Lock()
+	v.Lock()
+	defer v.Unlock()
+
+	if !v.AlreadyVoted[userId] {
 		v.AlreadyVoted[userId] = true
-		v.Count -= 1
-		v.Unlock()
+		v.Count--
 	}
 }
 
 func (v *VotesForSkipSong) HasVoted(userId int) bool {
+	v.Lock()
+	defer v.Unlock()
+
 	return v.AlreadyVoted[userId]
+}
+
+func (v *VotesForSkipSong) GetCount() int {
+	v.Lock()
+	defer v.Unlock()
+	return v.Count
 }
