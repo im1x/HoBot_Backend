@@ -201,6 +201,71 @@ func IsBotHaveModeratorRights(chatName string) bool {
 	return userInfo.Data.User.IsModerator
 }
 
+func FollowUnfollowChannel(channelName string, isFollow bool) error {
+	urlReq := fmt.Sprintf("https://api.live.vkplay.ru/v1/blog/%s/follow", channelName)
+	if !isFollow {
+		urlReq = fmt.Sprintf("https://api.live.vkplay.ru/v1/blog/%s/unsubscribe", channelName)
+
+	}
+	req, err := http.NewRequest("POST", urlReq, nil)
+	if err != nil {
+		if isFollow {
+			log.Error("Error while preparing following channel request:", err)
+		} else {
+			log.Error("Error while preparing unfollowing channel request:", err)
+		}
+		return err
+	}
+
+	req.Header.Add("accept", "application/json, text/plain, */*")
+	req.Header.Add("Authorization", "Bearer "+GetVkplToken())
+	req.Header.Add("host", "api.live.vkplay.ru")
+	req.Header.Add("Origin", "https://live.vkplay.ru")
+	req.Header.Add("Referer", fmt.Sprintf("https://live.vkplay.ru/%s", channelName))
+
+	client := http.Client{}
+	resp, err := client.Do(req)
+	if err != nil {
+		if isFollow {
+			log.Error("Error while following channel:", err)
+		} else {
+			log.Error("Error while unfollowing channel:", err)
+		}
+		return err
+	}
+	defer resp.Body.Close()
+
+	// Read the response body
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		log.Error("Error reading response body: %v", err)
+	}
+
+	// Parse the response JSON
+	var response map[string]interface{}
+	err = json.Unmarshal(body, &response)
+	if err != nil {
+		log.Error("FollowUnfollowChannel: Error unmarshalling response: %v", err, "isFollow ", isFollow)
+	}
+
+	// Check if response matches {"status": true}
+	if status, ok := response["status"].(bool); ok && status {
+		if isFollow {
+			log.Info("Successfully followed channel:", channelName)
+		} else {
+			log.Info("Successfully unfollowed channel:", channelName)
+		}
+	} else {
+		if isFollow {
+			log.Error("Failed to follow channel:", channelName, "Response:", string(body))
+		} else {
+			log.Error("Failed to unfollow channel:", channelName, "Response:", string(body))
+		}
+	}
+
+	return nil
+}
+
 func refreshVkplToken() error {
 	log.Info("VKPL: Refreshing vkplay token")
 	jar, err := cookiejar.New(nil)

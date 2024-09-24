@@ -77,11 +77,19 @@ func LoginVkpl(ctx context.Context, currentUser model.CurrentUserVkpl) (string, 
 			log.Error(err)
 			return "", err
 		}
+
 		err = settingsService.AddDefaultSettingsForUser(ctx, user)
 		if err != nil {
 			log.Error(err)
 			return "", err
 		}
+
+		err = vkplay.FollowUnfollowChannel(user.Channel, true)
+		if err != nil {
+			log.Error(err)
+			return "", err
+		}
+
 	}
 
 	refreshToken := tokenService.GenerateRefreshToken(user.Id)
@@ -94,7 +102,8 @@ func LoginVkpl(ctx context.Context, currentUser model.CurrentUserVkpl) (string, 
 }
 
 func WipeUser(ctx context.Context, id string) error {
-	_, err := DB.GetCollection(DB.Users).DeleteOne(ctx, bson.M{"_id": id})
+	var user model.User
+	err := DB.GetCollection(DB.Users).FindOneAndDelete(ctx, bson.M{"_id": id}).Decode(&user)
 	if err != nil {
 		log.Error("Error while wiping user [Users]:", err)
 		return err
@@ -115,6 +124,12 @@ func WipeUser(ctx context.Context, id string) error {
 	err = chat.RemoveUserFromWs(id)
 	if err != nil {
 		log.Error("Error while wiping user [WS]:", err)
+		return err
+	}
+
+	err = vkplay.FollowUnfollowChannel(user.Channel, false)
+	if err != nil {
+		log.Error("Error while unfollowing channel:", err)
 		return err
 	}
 
