@@ -246,6 +246,9 @@ func srUsersSkipSongYes(msg *ChatMsg, param string) {
 	if songRequest.VotesForSkip[msg.GetChannelId()] != nil {
 		if !songRequest.VotesForSkip[msg.GetChannelId()].HasVoted(msg.GetUser().ID) {
 			log.Infof("%s voted SKIP.(%d/%d)\n", msg.GetDisplayName(), songRequest.VotesForSkip[msg.GetChannelId()].GetCount()+1, settings.UsersSettings[msg.GetChannelId()].SongRequests.UsersSkipValue)
+		} else {
+			log.Infof("%s tryed to vote AGAIN. Rejected\n", msg.GetDisplayName())
+			return
 		}
 	} else {
 		log.Infof("%s voted SKIP.(%d/%d)\n", msg.GetDisplayName(), 1, settings.UsersSettings[msg.GetChannelId()].SongRequests.UsersSkipValue)

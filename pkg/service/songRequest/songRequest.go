@@ -255,7 +255,7 @@ func VotesForSkipYes(channelId string, userId int) bool {
 	InitUsersSkipIfNeeded(channelId)
 	VotesForSkip[channelId].VoteYes(userId)
 
-	if VotesForSkip[channelId].Count >= settings.UsersSettings[channelId].SongRequests.UsersSkipValue {
+	if VotesForSkip[channelId].GetCount() >= settings.UsersSettings[channelId].SongRequests.UsersSkipValue {
 		err := SkipSong(channelId)
 		if err != nil {
 			return false
