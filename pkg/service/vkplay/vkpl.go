@@ -13,11 +13,9 @@ import (
 	"go.mongodb.org/mongo-driver/mongo/options"
 	"io"
 	"net/http"
-	"net/http/cookiejar"
 	"net/url"
 	"os"
 	"strconv"
-	"strings"
 	"time"
 )
 
@@ -266,7 +264,7 @@ func FollowUnfollowChannel(channelName string, isFollow bool) error {
 	return nil
 }
 
-func refreshVkplToken() error {
+/*func refreshVkplToken_Old() error {
 	log.Info("VKPL: Refreshing vkplay token")
 	jar, err := cookiejar.New(nil)
 	if err != nil {
@@ -417,6 +415,56 @@ func refreshVkplToken() error {
 	}
 	authResponse.ClientID = tmpClientID
 	AuthVkpl = authResponse
+	return nil
+}*/
+
+func refreshVkplToken() error {
+	log.Info("VKPL: Refreshing vkplay token!!!")
+
+	reqUrl := "https://api.live.vkplay.ru/oauth/token/"
+	reqData := url.Values{
+		"response_type": {"code"},
+		"refresh_token": {AuthVkpl.RefreshToken},
+		"grant_type":    {"refresh_token"},
+		"device_id":     {AuthVkpl.ClientID},
+		"device_os":     {"streams_web"},
+	}
+
+	req, err := http.NewRequest("POST", reqUrl, bytes.NewBufferString(reqData.Encode()))
+	if err != nil {
+		return err
+	}
+
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	req.Header.Set("origin", "https://live.vkplay.ru")
+	req.Header.Set("referer", "https://live.vkplay.ru")
+	req.Header.Set("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/127.0.0.0 Safari/537.36")
+
+	client := &http.Client{}
+	resp, err := client.Do(req)
+	if resp.StatusCode != 200 || err != nil {
+		log.Error("Error while refreshing token:", err)
+		return err
+	}
+	defer resp.Body.Close()
+
+	var refreshResponse AuthRefreshTokenResponse
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		log.Error("Refresh token: Error while reading response body: ", err)
+		return err
+	}
+
+	err = json.Unmarshal(body, &refreshResponse)
+	if err != nil {
+		log.Error("Error decoding refresh token:", err)
+		return err
+	}
+
+	AuthVkpl.AccessToken = refreshResponse.AccessToken
+	AuthVkpl.RefreshToken = refreshResponse.RefreshToken
+	AuthVkpl.ExpiresAt = time.Now().Add(time.Second * time.Duration(refreshResponse.ExpiresIn)).UnixMilli()
+
 	return nil
 }
 
