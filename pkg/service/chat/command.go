@@ -47,7 +47,7 @@ func addCommand(name string, handler func(msg *ChatMsg, param string)) {
 }
 
 func helloCommand(msg *ChatMsg, param string) {
-	txt := fmt.Sprintf("Hello, %s! https://live.vkplay.ru/hobot asdf https://google.com https://www.youtube.com/", msg.GetDisplayName())
+	txt := fmt.Sprintf("Hello, %s! https://live.vkvideo.ru/hobot asdf https://google.com https://www.youtube.com/", msg.GetDisplayName())
 	SendMessageToChannel(txt, msg.GetChannelId(), msg.GetUser())
 }
 

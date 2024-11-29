@@ -189,14 +189,14 @@ func SendMessageToChannel(msgText string, channel string, mention *User) {
 	body := strings.NewReader("data=" + string(b))
 
 	// Creating and sending the request
-	req, err := http.NewRequest("POST", fmt.Sprintf("https://api.live.vkplay.ru/v1/blog/%s/public_video_stream/chat", channel), body)
+	req, err := http.NewRequest("POST", fmt.Sprintf("https://api.live.vkvideo.ru/v1/blog/%s/public_video_stream/chat", channel), body)
 	if err != nil {
 		log.Error("Error while sending message to channel:", err)
 		return
 	}
 
-	req.Header.Add("Origin", "https://live.vkplay.ru")
-	req.Header.Add("Referer", fmt.Sprintf("https://live.vkplay.ru/%s", channel))
+	req.Header.Add("Origin", "https://live.vkvideo.ru")
+	req.Header.Add("Referer", fmt.Sprintf("https://live.vkvideo.ru/%s", channel))
 	req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
 	req.Header.Add("Authorization", "Bearer "+vkplay.GetVkplToken())
 	req.Header.Add("X-From-Id", vkplay.AuthVkpl.ClientID)
@@ -296,9 +296,9 @@ func connectWS() error {
 	vkplWs.wsToken = wsToken
 
 	h := http.Header{
-		"Origin": {"https://live.vkplay.ru"},
+		"Origin": {"https://live.vkvideo.ru"},
 	}
-	wsCon, resp, err := websocket.DefaultDialer.Dial("wss://pubsub.live.vkplay.ru/connection/websocket?cf_protocol_version=v2", h)
+	wsCon, resp, err := websocket.DefaultDialer.Dial("wss://pubsub.live.vkvideo.ru/connection/websocket?cf_protocol_version=v2", h)
 	if err != nil {
 		log.Error("Error while connecting to ws: %d", resp.StatusCode)
 		return err
@@ -333,14 +333,14 @@ func getWsToken() string {
 		return ""
 	}
 
-	req, err := http.NewRequest("GET", "https://api.live.vkplay.ru/v1/ws/connect", nil)
+	req, err := http.NewRequest("GET", "https://api.live.vkvideo.ru/v1/ws/connect", nil)
 	if err != nil {
 		return ""
 	}
 	req.Header.Add("Authorization", "Bearer "+authVkplToken)
 	req.Header.Add("X-From-Id", vkplay.AuthVkpl.ClientID)
-	req.Header.Add("Origin", "https://live.vkplay.ru")
-	req.Header.Add("Referer", "https://live.vkplay.ru/")
+	req.Header.Add("Origin", "https://live.vkvideo.ru")
+	req.Header.Add("Referer", "https://live.vkvideo.ru/")
 
 	client := &http.Client{}
 	resp, err := client.Do(req)

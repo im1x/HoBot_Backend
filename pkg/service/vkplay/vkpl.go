@@ -83,7 +83,7 @@ func SaveWsChannelsToDB(config Config) error {
 }
 
 func CodeToToken(code string) (string, error) {
-	reqUrl := "https://api.live.vkplay.ru/oauth/server/token"
+	reqUrl := "https://api.live.vkvideo.ru/oauth/server/token"
 	reqData := url.Values{
 		"code":         {code},
 		"grant_type":   {"authorization_code"},
@@ -121,7 +121,7 @@ func CodeToToken(code string) (string, error) {
 }
 
 func GetCurrentUserInfo(accessToken string) (model.CurrentUserVkpl, error) {
-	req, err := http.NewRequest("GET", "https://apidev.live.vkplay.ru/v1/current_user", nil)
+	req, err := http.NewRequest("GET", "https://apidev.live.vkvideo.ru/v1/current_user", nil)
 	if err != nil {
 		return model.CurrentUserVkpl{}, err
 	}
@@ -158,7 +158,7 @@ func InsertOrUpdateUser(ctx context.Context, user model.User) error {
 }
 
 func GetChatUserInfo(chatName string, userId string) (ChatUserDetails, error) {
-	req, err := http.NewRequest("GET", fmt.Sprintf("https://apidev.live.vkplay.ru/v1/chat/member?channel_url=%s&user_id=%s", chatName, userId), nil)
+	req, err := http.NewRequest("GET", fmt.Sprintf("https://apidev.live.vkvideo.ru/v1/chat/member?channel_url=%s&user_id=%s", chatName, userId), nil)
 	if err != nil {
 		return ChatUserDetails{}, err
 	}
@@ -200,9 +200,9 @@ func IsBotHaveModeratorRights(chatName string) bool {
 }
 
 func FollowUnfollowChannel(channelName string, isFollow bool) error {
-	urlReq := fmt.Sprintf("https://api.live.vkplay.ru/v1/blog/%s/follow", channelName)
+	urlReq := fmt.Sprintf("https://api.live.vkvideo.ru/v1/blog/%s/follow", channelName)
 	if !isFollow {
-		urlReq = fmt.Sprintf("https://api.live.vkplay.ru/v1/blog/%s/unsubscribe", channelName)
+		urlReq = fmt.Sprintf("https://api.live.vkvideo.ru/v1/blog/%s/unsubscribe", channelName)
 
 	}
 	req, err := http.NewRequest("POST", urlReq, nil)
@@ -217,9 +217,9 @@ func FollowUnfollowChannel(channelName string, isFollow bool) error {
 
 	req.Header.Add("accept", "application/json, text/plain, */*")
 	req.Header.Add("Authorization", "Bearer "+GetVkplToken())
-	req.Header.Add("host", "api.live.vkplay.ru")
-	req.Header.Add("Origin", "https://live.vkplay.ru")
-	req.Header.Add("Referer", fmt.Sprintf("https://live.vkplay.ru/%s", channelName))
+	req.Header.Add("host", "api.live.vkvideo.ru")
+	req.Header.Add("Origin", "https://live.vkvideo.ru")
+	req.Header.Add("Referer", fmt.Sprintf("https://live.vkvideo.ru/%s", channelName))
 
 	client := http.Client{}
 	resp, err := client.Do(req)
@@ -421,7 +421,7 @@ func FollowUnfollowChannel(channelName string, isFollow bool) error {
 func refreshVkplToken() error {
 	log.Info("VKPL: Refreshing vkplay token!!!")
 
-	reqUrl := "https://api.live.vkplay.ru/oauth/token/"
+	reqUrl := "https://api.live.vkvideo.ru/oauth/token/"
 	reqData := url.Values{
 		"response_type": {"code"},
 		"refresh_token": {AuthVkpl.RefreshToken},
@@ -436,8 +436,8 @@ func refreshVkplToken() error {
 	}
 
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-	req.Header.Set("origin", "https://live.vkplay.ru")
-	req.Header.Set("referer", "https://live.vkplay.ru")
+	req.Header.Set("origin", "https://live.vkvideo.ru")
+	req.Header.Set("referer", "https://live.vkvideo.ru")
 	req.Header.Set("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/127.0.0.0 Safari/537.36")
 
 	client := &http.Client{}
@@ -538,7 +538,7 @@ func getCommandsFromDB() {
 }
 
 func GetUserIdByName(user string) (string, error) {
-	req, err := http.NewRequest("GET", fmt.Sprintf("https://api.live.vkplay.ru/v1/blog/%s/public_video_stream/chat/user/", user), nil)
+	req, err := http.NewRequest("GET", fmt.Sprintf("https://api.live.vkvideo.ru/v1/blog/%s/public_video_stream/chat/user/", user), nil)
 	if err != nil {
 		log.Error("Error while getting user id by name:", err)
 	}
