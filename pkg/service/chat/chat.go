@@ -101,6 +101,11 @@ func listen() {
 				// Print each message
 				//fmt.Printf("%s: %s\n", msg.GetDisplayName(), trimSb)
 
+				// TEMP
+				if msg.IsSubscriber() {
+					fmt.Println(msg.GetDisplayName())
+				}
+
 				alias, param := getAliasAndParamFromMessage(trimSb)
 
 				if voting.Voting[msg.GetChannelId()] != nil && voting.Voting[msg.GetChannelId()].IsVotingInProgress {

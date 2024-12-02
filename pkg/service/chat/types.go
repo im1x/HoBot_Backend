@@ -112,6 +112,15 @@ func (msg *ChatMsg) GetUser() *User {
 	return &msg.Push.Pub.Data.Data.User
 }
 
+func (msg *ChatMsg) IsSubscriber() bool {
+	for _, badge := range msg.GetUser().Badges {
+		if badge.Achievement != nil && badge.Achievement.Type == "subscription" {
+			return true
+		}
+	}
+	return false
+}
+
 type MsgTextContent struct {
 	Type        string `json:"type"`
 	Content     string `json:"content"`
