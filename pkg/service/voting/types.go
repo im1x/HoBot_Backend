@@ -51,6 +51,8 @@ type VotingData struct {
 	ResultRating       *RatingResult
 	StopAt             string
 	StopFunc           func()
+	// TEMP
+	AllRatings []int
 }
 
 func (v *VotingData) AddVote(channelId string, userId int, userName string, option int) {
@@ -63,6 +65,8 @@ func (v *VotingData) AddVote(channelId string, userId int, userName string, opti
 			v.ResultRating.Sum += option
 			v.ResultRating.Count += 1
 			log.Infof("%s voted for %d ( %d / %d) ", userName, option, v.ResultRating.Count, v.ResultRating.Sum)
+			// TEMP
+			v.AllRatings = append(v.AllRatings, option)
 		}
 		v.Unlock()
 		socketio.Emit(channelId, socketio.VotingVote, &Vote{Name: userName, Vote: option})

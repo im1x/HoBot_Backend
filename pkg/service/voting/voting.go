@@ -3,6 +3,7 @@ package voting
 import (
 	"HoBot_Backend/pkg/socketio"
 	"HoBot_Backend/pkg/task"
+	"HoBot_Backend/pkg/utility"
 	"github.com/gofiber/fiber/v2/log"
 	"strconv"
 	"time"
@@ -84,4 +85,19 @@ func StopVoting(userId string) {
 	log.Infof("Voting stopped: %+v ", Voting[userId].ToResponse())
 
 	socketio.Emit(userId, socketio.VotingStop, Voting[userId].ToResponse())
+
+	// TEMP
+	if Voting[userId].Type == 0 {
+		go func() {
+			ratings := make([]int, 0, len(Voting[userId].AllRatings))
+			log.Info("-----------------RATING-----------------")
+			log.Infof("Arithmetic Mean: %.2f\n", utility.Mean(ratings))
+			log.Infof("Median: %.2f\n", utility.Median(ratings))
+			log.Infof("Trimmed Mean (10%% trim): %.2f\n", utility.TrimmedMean(ratings, 0.10))
+			log.Infof("Bayesian Mean: %.2f\n", utility.BayesianMean(ratings, 5.5, 10))
+			log.Infof("Mode-Filtered Mean (tolerance=2): %.2f\n", utility.FilterByMode(ratings, 2))
+			log.Infof("Standard Deviation Filtered Mean (threshold=1.5): %.2f\n", utility.FilterByStandardDeviation(ratings, 1.5))
+			log.Info("----------------------------------------")
+		}()
+	}
 }
