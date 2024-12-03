@@ -2,6 +2,7 @@ package handler
 
 import (
 	commonService "HoBot_Backend/pkg/service/common"
+	"HoBot_Backend/pkg/telegram"
 	"github.com/gofiber/fiber/v2"
 	"os"
 )
@@ -15,6 +16,8 @@ func Feedback(c *fiber.Ctx) error {
 	}
 
 	userId := parseUserIdFromRequest(c)
+
+	telegram.SendMessage(userId + ": " + feedbackText)
 
 	err := commonService.AddFeedback(c.Context(), userId, feedbackText)
 	if err != nil {
