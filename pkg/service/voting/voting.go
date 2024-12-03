@@ -87,9 +87,9 @@ func StopVoting(userId string) {
 	socketio.Emit(userId, socketio.VotingStop, Voting[userId].ToResponse())
 
 	// TEMP
-	if Voting[userId].Type == 0 {
+	if Voting[userId].Type == 1 {
 		go func() {
-			ratings := make([]int, 0, len(Voting[userId].AllRatings))
+			ratings := Voting[userId].AllRatings
 			log.Info("-----------------RATING-----------------")
 			log.Infof("Arithmetic Mean: %.2f\n", utility.Mean(ratings))
 			log.Infof("Median: %.2f\n", utility.Median(ratings))
