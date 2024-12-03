@@ -40,7 +40,7 @@ type User struct {
 		IsCreated   bool   `json:"isCreated"`
 		Name        string `json:"name"`
 		SmallURL    string `json:"smallUrl"`
-		Achievement struct {
+		Achievement *struct {
 			Type string `json:"type"`
 			Name string `json:"name"`
 		} `json:"achievement"`
