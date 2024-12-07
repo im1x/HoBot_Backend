@@ -2,6 +2,7 @@ package voting
 
 import (
 	"HoBot_Backend/pkg/socketio"
+	"HoBot_Backend/pkg/statistics"
 	"HoBot_Backend/pkg/task"
 	"HoBot_Backend/pkg/utility"
 	"github.com/gofiber/fiber/v2/log"
@@ -30,11 +31,13 @@ func StartVoting(userId string, votingRequest VotingRequest) {
 				Count: 0,
 			}
 		}
+		statistics.IncField(userId, statistics.Voting)
 	} else {
 		for i := 1; i <= 10; i++ {
 			key := strconv.Itoa(i)
 			votingAnswers[key] = i
 		}
+		statistics.IncField(userId, statistics.Rating)
 	}
 
 	if Voting[userId] != nil {

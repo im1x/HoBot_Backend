@@ -7,6 +7,7 @@ import (
 	"HoBot_Backend/pkg/service/songRequest"
 	"HoBot_Backend/pkg/service/youtube"
 	"HoBot_Backend/pkg/socketio"
+	"HoBot_Backend/pkg/statistics"
 	"context"
 	"go.mongodb.org/mongo-driver/bson"
 	"strconv"
@@ -122,6 +123,7 @@ func srAdd(msg *ChatMsg, param string) {
 
 	socketio.Emit(msg.GetChannelId(), socketio.SongRequestAdded, sr)
 	SendWhisperToUser("Реквест добавлен в очередь", msg.GetChannelId(), msg.GetUser())
+	statistics.IncField(msg.GetChannelId(), statistics.SongRequestsAdd)
 }
 
 func srSetVolume(msg *ChatMsg, param string) {
@@ -171,6 +173,7 @@ func srSkip(msg *ChatMsg, param string) {
 	}
 	socketio.Emit(msg.GetChannelId(), socketio.SongRequestSkipSong, "")
 	SendMessageToChannel(msg.GetDisplayName()+" пропустил реквест", msg.GetChannelId(), nil)
+	statistics.IncField(msg.GetChannelId(), statistics.SongRequestsSkipByCommand)
 }
 
 func srDeleteSongRequest(msg *ChatMsg, param string) {
@@ -260,6 +263,7 @@ func srUsersSkipSongYes(msg *ChatMsg, param string) {
 		socketio.Emit(msg.GetChannelId(), socketio.SongRequestSkipSong, "")
 		SendMessageToChannel("Зрители пропустили реквест", msg.GetChannelId(), nil)
 		log.Info("Skipped song by users")
+		statistics.IncField(msg.GetChannelId(), statistics.SongRequestsSkipByUsers)
 		return
 	}
 
@@ -287,6 +291,7 @@ func srUsersSkipSongNo(msg *ChatMsg, param string) {
 
 func printText(msg *ChatMsg, param string) {
 	SendMessageToChannel(param, msg.GetChannelId(), msg.GetUser())
+	statistics.IncField(msg.GetChannelId(), statistics.PrintTextByCommand)
 }
 
 func availableCommands(msg *ChatMsg, param string) {

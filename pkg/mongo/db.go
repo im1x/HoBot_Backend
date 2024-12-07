@@ -20,6 +20,7 @@ const (
 	SongRequests        CollectionName = "SongRequests"
 	SongRequestsHistory CollectionName = "SongRequestsHistory"
 	Feedback            CollectionName = "Feedback"
+	Statistics          CollectionName = "Statistics"
 )
 
 var ctx = context.TODO()

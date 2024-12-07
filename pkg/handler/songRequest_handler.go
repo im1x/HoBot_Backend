@@ -4,6 +4,7 @@ import (
 	"HoBot_Backend/pkg/service/chat"
 	"HoBot_Backend/pkg/service/songRequest"
 	"HoBot_Backend/pkg/service/vkplay"
+	"HoBot_Backend/pkg/statistics"
 	"fmt"
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/log"
@@ -46,6 +47,8 @@ func PlaylistByStreamer(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Failed to get playlist"})
 	}
 
+	statistics.IncField(userId, statistics.SongRequestsShowPublicPlaylist)
+
 	return c.Status(fiber.StatusOK).JSON(fiber.Map{"playlist": playlist, "history": history})
 }
 
@@ -82,6 +85,7 @@ func SkipSong(c *fiber.Ctx) error {
 	if err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(err.Error())
 	}
+	statistics.IncField(userId, statistics.SongRequestsPlayedSkipped)
 	return nil
 }
 
