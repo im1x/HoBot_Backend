@@ -15,14 +15,14 @@ type SocketEvent string
 
 const (
 	SongRequestAdded      SocketEvent = "SongRequestAdded"
-	SongRequestSetVolume  SocketEvent = "SongRequestSetVolume"
-	SongRequestSkipSong   SocketEvent = "SongRequestSkipSong"
-	SongRequestPlayPause  SocketEvent = "SongRequestPlayPause"
-	SongRequestDeleteSong SocketEvent = "SongRequestDeleteSong"
-	VotingStart           SocketEvent = "VotingStart"
-	VotingVote            SocketEvent = "VotingVote"
-	VotingStop            SocketEvent = "VotingStop"
-	VotingDelete          SocketEvent = "VotingDelete"
+	SongRequestSetVolume              = "SongRequestSetVolume"
+	SongRequestSkipSong               = "SongRequestSkipSong"
+	SongRequestPlayPause              = "SongRequestPlayPause"
+	SongRequestDeleteSong             = "SongRequestDeleteSong"
+	VotingStart                       = "VotingStart"
+	VotingVote                        = "VotingVote"
+	VotingStop                        = "VotingStop"
+	VotingDelete                      = "VotingDelete"
 )
 
 func Start() {

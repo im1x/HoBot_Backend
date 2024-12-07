@@ -12,15 +12,14 @@ type CollectionName string
 
 const (
 	Users               CollectionName = "Users"
-	Tokens              CollectionName = "Tokens"
-	Vkpl                CollectionName = "Vkpl"
-	Config              CollectionName = "Config"
-	SettingsOptions     CollectionName = "SettingsOptions"
-	UserSettings        CollectionName = "UserSettings"
-	SongRequests        CollectionName = "SongRequests"
-	SongRequestsHistory CollectionName = "SongRequestsHistory"
-	Feedback            CollectionName = "Feedback"
-	Statistics          CollectionName = "Statistics"
+	Tokens                             = "Tokens"
+	Vkpl                               = "Vkpl"
+	Config                             = "Config"
+	SettingsOptions                    = "SettingsOptions"
+	UserSettings                       = "UserSettings"
+	SongRequests                       = "SongRequests"
+	SongRequestsHistory                = "Feedback"
+	Statistics                         = "Statistics"
 )
 
 var ctx = context.TODO()
