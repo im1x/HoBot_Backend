@@ -16,7 +16,7 @@ const (
 	SongRequestsSkipByCommand                 = "song_requests_skip_by_command"
 	SongRequestsSkipByUsers                   = "song_requests_skip_by_users"
 	SongRequestsShowPublicPlaylist            = "song_requests_show_public_playlist"
-	SongRequestsPlayedSkipped                 = "song_requests_played_skipped"
+	SongRequestsPlayed                        = "song_requests_played"
 	PrintTextByCommand                        = "print_text_by_command"
 	Voting                                    = "voting"
 	Rating                                    = "rating"

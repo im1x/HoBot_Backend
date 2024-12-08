@@ -85,7 +85,7 @@ func SkipSong(c *fiber.Ctx) error {
 	if err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(err.Error())
 	}
-	statistics.IncField(userId, statistics.SongRequestsPlayedSkipped)
+	statistics.IncField(userId, statistics.SongRequestsPlayed)
 	return nil
 }
 
