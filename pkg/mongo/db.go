@@ -18,7 +18,8 @@ const (
 	SettingsOptions                    = "SettingsOptions"
 	UserSettings                       = "UserSettings"
 	SongRequests                       = "SongRequests"
-	SongRequestsHistory                = "Feedback"
+	SongRequestsHistory                = "SongRequestsHistory"
+	Feedback                           = "Feedback"
 	Statistics                         = "Statistics"
 )
 
