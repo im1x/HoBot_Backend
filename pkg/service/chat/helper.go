@@ -2,8 +2,11 @@ package chat
 
 import (
 	"HoBot_Backend/pkg/model"
+	DB "HoBot_Backend/pkg/mongo"
 	"HoBot_Backend/pkg/service/vkplay"
+	"context"
 	"fmt"
+	"go.mongodb.org/mongo-driver/bson"
 	"strings"
 	"time"
 )
@@ -72,4 +75,10 @@ func prepareStringForSend(s string) string {
 	res := strings.ReplaceAll(s, "\n", "\\n")
 	res = strings.ReplaceAll(res, `"`, `\"`)
 	return res
+}
+
+func GetUserNameById(ctx context.Context, id string) (string, error) {
+	var user model.User
+	err := DB.GetCollection(DB.Users).FindOne(ctx, bson.M{"_id": id}).Decode(&user)
+	return user.Channel, err
 }

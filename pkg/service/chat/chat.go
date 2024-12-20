@@ -4,6 +4,7 @@ import (
 	"HoBot_Backend/pkg/service/vkplay"
 	"HoBot_Backend/pkg/service/voting"
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"github.com/gofiber/fiber/v2/log"
@@ -12,6 +13,7 @@ import (
 	"net/http"
 	"regexp"
 	"strings"
+	"time"
 )
 
 var vkplWs VkplWs
@@ -102,9 +104,9 @@ func listen() {
 				//fmt.Printf("%s: %s\n", msg.GetDisplayName(), trimSb)
 
 				// TEMP
-				if msg.IsSubscriber() {
-					fmt.Println(msg.GetDisplayName())
-				}
+				/*				if msg.IsSubscriber() {
+								fmt.Println(msg.GetDisplayName())
+							}*/
 
 				alias, param := getAliasAndParamFromMessage(trimSb)
 
@@ -137,6 +139,15 @@ func SendMessageToChannel(msgText string, channel string, mention *User) {
 	if len([]rune(msgTextClear)) > 495 {
 		log.Info("Too long message: (", len([]rune(msgTextClear)), ") ", msgTextClear)
 		msgTextClear = "Невозможно отобразить, слишком длинное сообщение."
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	userId, err := GetUserNameById(ctx, channel)
+	if err != nil {
+		log.Error("Error while getting user id:", err)
+		return
 	}
 
 	// Adding mention if present
@@ -194,7 +205,7 @@ func SendMessageToChannel(msgText string, channel string, mention *User) {
 	body := strings.NewReader("data=" + string(b))
 
 	// Creating and sending the request
-	req, err := http.NewRequest("POST", fmt.Sprintf("https://api.live.vkvideo.ru/v1/blog/%s/public_video_stream/chat", channel), body)
+	req, err := http.NewRequest("POST", fmt.Sprintf("https://api.live.vkvideo.ru/v1/blog/%s/public_video_stream/chat", userId), body)
 	if err != nil {
 		log.Error("Error while sending message to channel:", err)
 		return
