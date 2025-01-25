@@ -72,7 +72,13 @@ func LoginVkpl(ctx context.Context, currentUser model.CurrentUserVkpl) (string, 
 	}
 
 	if isNewUser {
-		err := chat.AddUserToWs(user.Id)
+		err := vkplay.FollowUnfollowChannel(user.Channel, true)
+		if err != nil {
+			log.Error(err)
+			return "", err
+		}
+
+		err = chat.AddUserToWs(user.Id)
 		if err != nil {
 			log.Error(err)
 			return "", err
@@ -83,13 +89,6 @@ func LoginVkpl(ctx context.Context, currentUser model.CurrentUserVkpl) (string, 
 			log.Error(err)
 			return "", err
 		}
-
-		err = vkplay.FollowUnfollowChannel(user.Channel, true)
-		if err != nil {
-			log.Error(err)
-			return "", err
-		}
-
 	}
 
 	refreshToken := tokenService.GenerateRefreshToken(user.Id)
