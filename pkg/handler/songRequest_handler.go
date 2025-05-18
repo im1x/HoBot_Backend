@@ -18,7 +18,11 @@ func PlaylistByStreamer(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusBadRequest).JSON("Streamer is empty")
 	}
 
-	userId, err := vkplay.GetUserIdByName(streamer)
+	userIdWs, err := vkplay.GetUserIdWsByName(streamer)
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(err.Error())
+	}
+	userId, err := chat.GetUserIdByWs(c.Context(), userIdWs)
 	if err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(err.Error())
 	}

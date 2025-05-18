@@ -6,6 +6,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"github.com/gofiber/fiber/v2/log"
 	"go.mongodb.org/mongo-driver/bson"
@@ -176,6 +177,9 @@ func GetChatUserInfo(chatName string, userId string) (ChatUserDetails, error) {
 		b, _ := io.ReadAll(resp.Body)
 		fmt.Println(string(b))
 
+		if err == nil {
+			err = errors.New("error while getting chat user details")
+		}
 		return ChatUserDetails{}, err
 	}
 	defer resp.Body.Close()
@@ -188,6 +192,42 @@ func GetChatUserInfo(chatName string, userId string) (ChatUserDetails, error) {
 	}
 
 	return user, nil
+}
+
+func GetChannelInfo(channelName string) (ChannelInfo, error) {
+	req, err := http.NewRequest("GET", fmt.Sprintf("https://apidev.live.vkvideo.ru/v1/channel?channel_url=%s", channelName), nil)
+	if err != nil {
+		return ChannelInfo{}, err
+	}
+
+	req.Header.Set("Authorization", "Basic "+os.Getenv("VKPL_APP_CREDEANTIALS"))
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+
+	client := &http.Client{}
+	resp, err := client.Do(req)
+	if resp.StatusCode != 200 || err != nil {
+		log.Error("Error while getting channel info:", err)
+		fmt.Println(resp.StatusCode)
+		fmt.Println(err)
+		fmt.Println(resp.Body)
+		b, _ := io.ReadAll(resp.Body)
+		fmt.Println(string(b))
+
+		if err == nil {
+			err = errors.New("error while getting channel info")
+		}
+		return ChannelInfo{}, err
+	}
+	defer resp.Body.Close()
+
+	var channel ChannelInfo
+	err = json.NewDecoder(resp.Body).Decode(&channel)
+	if err != nil {
+		log.Error("Error while decoding channel info:", err)
+		return ChannelInfo{}, err
+	}
+
+	return channel, nil
 }
 
 func IsBotHaveModeratorRights(chatName string) bool {
@@ -537,7 +577,7 @@ func getCommandsFromDB() {
 	ChannelsCommands = cmds
 }
 
-func GetUserIdByName(user string) (string, error) {
+func GetUserIdWsByName(user string) (string, error) {
 	req, err := http.NewRequest("GET", fmt.Sprintf("https://api.live.vkvideo.ru/v1/blog/%s/public_video_stream/chat/user/", user), nil)
 	if err != nil {
 		log.Error("Error while getting user id by name:", err)
@@ -571,5 +611,4 @@ func GetUserIdByName(user string) (string, error) {
 	}
 
 	return strconv.Itoa(streamerInfo.Data.Owner.ID), nil
-
 }

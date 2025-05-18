@@ -1,6 +1,7 @@
 package chat
 
 import (
+	"HoBot_Backend/pkg/model"
 	"HoBot_Backend/pkg/service/vkplay"
 	"HoBot_Backend/pkg/service/voting"
 	"bytes"
@@ -17,6 +18,7 @@ import (
 )
 
 var vkplWs VkplWs
+var wsConIds = make(map[int]string)
 
 func Start() {
 	err := connectWS()
@@ -25,10 +27,12 @@ func Start() {
 	}
 
 	go listen()
+	go checkWsConns()
 }
 func listen() {
 	for {
 		p, err := readWSMessage()
+		//log.Info(string(p))
 		if err != nil {
 			log.Error("Error while reading ws message:", err)
 			log.Info("VKPL: Reconnecting to ws")
@@ -46,9 +50,8 @@ func listen() {
 		} else {
 			var msg ChatMsg
 			err = json.Unmarshal(p, &msg)
-			if err != nil {
+			if err != nil && !strings.Contains(string(p), "subscribe") {
 				log.Error("Error while unmarshalling ws message:", err)
-
 				// ---------- Block for printing error ----------
 				dst := &bytes.Buffer{}
 				if err := json.Indent(dst, p, "", "  "); err != nil {
@@ -57,8 +60,37 @@ func listen() {
 				}
 				log.Error(dst.String())
 				// ----------
+				log.Info("VKPL: Invalid message:", string(p))
 				continue
 			}
+
+			// --------------
+			if strings.Contains(string(p), "subscribe") {
+				//log.Info(string(p))
+				lines := bytes.Split(p, []byte("\n"))
+				for _, line := range lines {
+					if len(bytes.TrimSpace(line)) == 0 {
+						continue
+					}
+
+					if !json.Valid(line) {
+						log.Info("Invalid JSON: %s", line)
+						continue
+					}
+
+					type wsRes struct {
+						ID int `json:"id"`
+					}
+					var wsMsg wsRes
+					err = json.Unmarshal(line, &wsMsg)
+					if err != nil {
+						log.Error("WS2 Error while unmarshalling ws message:", err)
+					}
+					delete(wsConIds, wsMsg.ID)
+				}
+
+			}
+			// --------------
 
 			if msg.Push.Pub.Data.Type == "message" {
 				var sb strings.Builder
@@ -255,10 +287,10 @@ func SendWhisperToUser(msgText string, channel string, user *User) {
 	}
 }
 
-func AddUserToWs(userId string) error {
+func AddUserToWs(user model.User) error {
 	// DB
 	wsChannels := vkplay.GetWsChannelsFromDB()
-	wsChannels.ChannelsAutoJoin = append(wsChannels.ChannelsAutoJoin, userId)
+	wsChannels.ChannelsAutoJoin = append(wsChannels.ChannelsAutoJoin, user.ChannelWS)
 	err := vkplay.SaveWsChannelsToDB(wsChannels)
 	if err != nil {
 		log.Error("Error while adding user to ws:", err)
@@ -266,22 +298,22 @@ func AddUserToWs(userId string) error {
 	}
 
 	// WS
-	err = joinOrLeaveChat(userId, true)
+	err = joinOrLeaveChat(user.ChannelWS, true)
 	if err != nil {
 		log.Error("Error while joining chat for new user:", err)
 		return err
 	}
 
-	SendMessageToChannel("Бот подключился к чату. Для нормальной работы боту необходимы права модератора. Выдать права боту можно командой \"/mod channel HoBOT\"", userId, nil)
+	SendMessageToChannel("Бот подключился к чату. Для нормальной работы боту необходимы права модератора. Выдать права боту можно командой \"/mod channel HoBOT\"", user.Id, nil)
 
 	return nil
 }
 
-func RemoveUserFromWs(userId string) error {
+func RemoveUserFromWs(user model.User) error {
 	// DB
 	wsChannels := vkplay.GetWsChannelsFromDB()
 	for i, v := range wsChannels.ChannelsAutoJoin {
-		if v == userId {
+		if v == user.ChannelWS {
 			wsChannels.ChannelsAutoJoin = append(wsChannels.ChannelsAutoJoin[:i], wsChannels.ChannelsAutoJoin[i+1:]...)
 			break
 		}
@@ -292,12 +324,41 @@ func RemoveUserFromWs(userId string) error {
 		return err
 	}
 
-	SendMessageToChannel("Бот покинул чат.", userId, nil)
+	SendMessageToChannel("Бот покинул чат.", user.Id, nil)
 
 	// WS
-	err = joinOrLeaveChat(userId, false)
+	err = joinOrLeaveChat(user.ChannelWS, false)
 	if err != nil {
 		log.Error("Error while leaving chat for removed user:", err)
+		return err
+	}
+	return nil
+}
+
+func UpdateUserInWs(oldUserId string, newUserId string) error {
+	// DB
+	wsChannels := vkplay.GetWsChannelsFromDB()
+	for i, v := range wsChannels.ChannelsAutoJoin {
+		if v == oldUserId {
+			wsChannels.ChannelsAutoJoin[i] = newUserId
+			break
+		}
+	}
+	err := vkplay.SaveWsChannelsToDB(wsChannels)
+	if err != nil {
+		log.Error("Error while updating user in ws:", err)
+		return err
+	}
+
+	// WS
+	err = joinOrLeaveChat(oldUserId, false)
+	if err != nil {
+		log.Error("Error while leaving chat for updated user:", err)
+		return err
+	}
+	err = joinOrLeaveChat(newUserId, true)
+	if err != nil {
+		log.Error("Error while joining chat for updated user:", err)
 		return err
 	}
 	return nil
@@ -314,7 +375,7 @@ func connectWS() error {
 	h := http.Header{
 		"Origin": {"https://live.vkvideo.ru"},
 	}
-	wsCon, resp, err := websocket.DefaultDialer.Dial("wss://pubsub.live.vkvideo.ru/connection/websocket?cf_protocol_version=v2", h)
+	wsCon, resp, err := websocket.DefaultDialer.Dial("wss://pubsub-dev.live.vkvideo.ru/connection/websocket?cf_protocol_version=v2", h)
 	if err != nil {
 		log.Error("Error while connecting to ws: %d", resp.StatusCode)
 		return err
@@ -405,6 +466,13 @@ func joinOrLeaveChat(channel string, join bool) error {
 	if !join {
 		action = "unsubscribe"
 	}
+
+	// ----------
+	if join {
+		wsConIds[vkplWs.wsCounter] = channel
+	}
+	// ----------
+
 	p := fmt.Sprintf(`{"%s":{"channel":"channel-chat:%s"},"id":%d}`, action, channel, vkplWs.wsCounter)
 	err := sendWSMessage([]byte(p))
 	if err != nil {
@@ -417,6 +485,9 @@ func joinAllChats() error {
 	channels := vkplay.GetWsChannelsFromDB().ChannelsAutoJoin
 
 	for _, channel := range channels {
+		//if (i+1)%20 == 0 {
+		//time.Sleep(1 * time.Second)
+		//}
 		err := joinOrLeaveChat(channel, true)
 		if err != nil {
 			log.Error("Error while joining chat:", err)
@@ -424,4 +495,29 @@ func joinAllChats() error {
 		}
 	}
 	return nil
+}
+
+func checkWsConns() {
+	time.Sleep(10 * time.Second)
+	log.Info("How many ws not connected:", len(wsConIds))
+	log.Info("Channels:")
+	for _, v := range wsConIds {
+		log.Info(v)
+	}
+
+	//time.Sleep(5 * time.Second)
+	//checkWsPresence()
+}
+
+func checkWsPresence() {
+	//channels := vkplay.GetWsChannelsFromDB().ChannelsAutoJoin
+	vkplWs.wsCounter++
+	//p := fmt.Sprintf(`{"method": "presence", "params": {"channel":"channel-chat:%s"}}`, "18591758")
+	p := fmt.Sprintf(`{"presence":{"channel":"channel-chat:%s"},"id":%d}`, "18591758", vkplWs.wsCounter)
+
+	err := sendWSMessage([]byte(p))
+	if err != nil {
+		log.Error("Error while sending ws message:", err)
+		return
+	}
 }

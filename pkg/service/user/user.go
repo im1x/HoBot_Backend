@@ -14,6 +14,7 @@ import (
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 	"strconv"
+	"strings"
 )
 
 func GetCurrentUser(ctx context.Context, id string) (model.User, error) {
@@ -59,13 +60,22 @@ func isUserAlreadyExist(ctx context.Context, id string) bool {
 
 func LoginVkpl(ctx context.Context, currentUser model.CurrentUserVkpl) (string, error) {
 	isNewUser := isUserAlreadyExist(ctx, strconv.Itoa(currentUser.Data.User.ID))
+	channelInfo, err := vkplay.GetChannelInfo(currentUser.Data.Channel.Url)
+	if err != nil {
+		return "", err
+	}
+
+	channelWs := strings.Split(channelInfo.Data.Channel.WebSocketChannels.Chat, ":")[1]
+
 	user := model.User{
 		Id:        strconv.Itoa(currentUser.Data.User.ID),
 		Nick:      currentUser.Data.User.Nick,
 		Channel:   currentUser.Data.Channel.Url,
+		ChannelWS: channelWs,
 		AvatarURL: currentUser.Data.User.AvatarURL + "&croped=1&mh=80&mw=80",
 	}
-	err := vkplay.InsertOrUpdateUser(ctx, user)
+
+	err = vkplay.InsertOrUpdateUser(ctx, user)
 	if err != nil {
 		log.Error(err)
 		return "", err
@@ -78,7 +88,7 @@ func LoginVkpl(ctx context.Context, currentUser model.CurrentUserVkpl) (string, 
 			return "", err
 		}
 
-		err = chat.AddUserToWs(user.Id)
+		err = chat.AddUserToWs(user)
 		if err != nil {
 			log.Error(err)
 			return "", err
@@ -120,7 +130,7 @@ func WipeUser(ctx context.Context, id string) error {
 		return err
 	}
 
-	err = chat.RemoveUserFromWs(id)
+	err = chat.RemoveUserFromWs(user)
 	if err != nil {
 		log.Error("Error while wiping user [WS]:", err)
 		return err

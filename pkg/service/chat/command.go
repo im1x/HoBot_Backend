@@ -101,7 +101,7 @@ func srAdd(msg *ChatMsg, param string) {
 		return
 	}
 
-	var sr = songRequest.SongRequest{
+	sr := songRequest.SongRequest{
 		ChannelId: msg.GetChannelId(),
 		By:        msg.GetDisplayName(),
 		Requested: time.Now().Format(time.RFC3339),
@@ -118,7 +118,6 @@ func srAdd(msg *ChatMsg, param string) {
 		log.Error("Error while adding song request to db:", err)
 		return
 	}
-
 	sr.Id = id
 
 	socketio.Emit(msg.GetChannelId(), socketio.SongRequestAdded, sr)

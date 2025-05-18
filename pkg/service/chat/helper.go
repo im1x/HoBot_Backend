@@ -82,3 +82,9 @@ func GetUserNameById(ctx context.Context, id string) (string, error) {
 	err := DB.GetCollection(DB.Users).FindOne(ctx, bson.M{"_id": id}).Decode(&user)
 	return user.Channel, err
 }
+
+func GetUserIdByWs(ctx context.Context, ws string) (string, error) {
+	var user model.User
+	err := DB.GetCollection(DB.Users).FindOne(ctx, bson.M{"channel_ws": ws}).Decode(&user)
+	return user.Id, err
+}

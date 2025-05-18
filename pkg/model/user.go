@@ -8,6 +8,7 @@ type User struct {
 	Id        string `bson:"_id,omitempty" json:"id,omitempty"`
 	Nick      string `bson:"nick,omitempty" json:"nick,omitempty"`
 	Channel   string `bson:"channel,omitempty" json:"channel,omitempty"`
+	ChannelWS string `bson:"channel_ws,omitempty"`
 	AvatarURL string `bson:"avatar_url,omitempty" json:"avatar_url,omitempty"`
 }
 

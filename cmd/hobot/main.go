@@ -42,6 +42,8 @@ func main() {
 	settings.LoadSettings()
 	chat.Start()
 
+	//go actions.FixWsIdForAllUsers()
+
 	//Http server
 	var app *fiber.App
 	if os.Getenv("IPV6_ONLY") == "true" {

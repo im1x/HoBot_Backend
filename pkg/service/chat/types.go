@@ -1,8 +1,11 @@
 package chat
 
 import (
+	"context"
+	"github.com/gofiber/fiber/v2/log"
 	"github.com/gorilla/websocket"
 	"strings"
+	"time"
 )
 
 type VkplWs struct {
@@ -101,7 +104,13 @@ type ChatMsg struct {
 }
 
 func (msg *ChatMsg) GetChannelId() string {
-	return strings.Split(msg.Push.Channel, ":")[1]
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	defer cancel()
+	channelId, err := GetUserIdByWs(ctx, strings.Split(msg.Push.Channel, ":")[1])
+	if err != nil {
+		log.Error("Error while getting channel id by ws:", err)
+	}
+	return channelId
 }
 
 func (msg *ChatMsg) GetDisplayName() string {
