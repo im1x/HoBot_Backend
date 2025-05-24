@@ -5,7 +5,13 @@ import (
 	"github.com/gofiber/fiber/v2/log"
 	"github.com/gorilla/websocket"
 	"strings"
+	"sync"
 	"time"
+)
+
+var (
+	channelCache   = make(map[string]string)
+	channelCacheMu sync.RWMutex
 )
 
 type VkplWs struct {
@@ -104,12 +110,38 @@ type ChatMsg struct {
 }
 
 func (msg *ChatMsg) GetChannelId() string {
+	// Get wsID
+	parts := strings.Split(msg.Push.Channel, ":")
+	if len(parts) < 2 {
+		log.Errorf("Invalid channel format: %s", msg.Push.Channel)
+		return ""
+	}
+	wsID := parts[1]
+
+	// Check cache
+	channelCacheMu.RLock()
+	cachedID, ok := channelCache[wsID]
+	channelCacheMu.RUnlock()
+
+	if ok {
+		return cachedID
+	}
+
+	// Get channel id
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 	defer cancel()
-	channelId, err := GetUserIdByWs(ctx, strings.Split(msg.Push.Channel, ":")[1])
+
+	channelId, err := GetUserIdByWs(ctx, wsID)
 	if err != nil {
-		log.Error("Error while getting channel id by ws:", err)
+		log.Errorf("Error getting channel id for wsID %s: %v", wsID, err)
+		return ""
 	}
+
+	// Update cache
+	channelCacheMu.Lock()
+	channelCache[wsID] = channelId
+	channelCacheMu.Unlock()
+
 	return channelId
 }
 
