@@ -74,3 +74,41 @@ func FixWsIdForAllUsers() {
 	}
 	log.Infof("fixWsIdForAllUsers: updated %d users", changed)
 }
+
+func GenerateNewWsConnectConfig() {
+	log.Info("GenerateNewWsConnectConfig: start")
+	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+	defer cancel()
+
+	// get all users
+	var users []model.User
+	cur, err := mongo.GetCollection(mongo.Users).Find(ctx, bson.M{})
+	if err != nil {
+		log.Error("GenerateNewWsConnectConfig: get users", err)
+		return
+	}
+	defer cur.Close(ctx)
+
+	err = cur.All(ctx, &users)
+	if err != nil {
+		log.Error("GenerateNewWsConnectConfig: decode users", err)
+	}
+
+	cfg := vkplay.GetWsChannelsFromDB()
+	cfg.ChannelsAutoJoin = []string{}
+
+	for _, user := range users {
+		if user.ChannelWS != "" {
+			cfg.ChannelsAutoJoin = append(cfg.ChannelsAutoJoin, user.ChannelWS)
+		}
+	}
+
+	log.Info("GenerateNewWsConnectConfig: new ws config length: ", len(cfg.ChannelsAutoJoin))
+	err = vkplay.SaveWsChannelsToDB(cfg)
+	if err != nil {
+		log.Error("GenerateNewWsConnectConfig: save ws config", err)
+		return
+	}
+
+	log.Info("GenerateNewWsConnectConfig: end")
+}

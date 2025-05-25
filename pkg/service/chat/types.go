@@ -134,6 +134,7 @@ func (msg *ChatMsg) GetChannelId() string {
 	channelId, err := GetUserIdByWs(ctx, wsID)
 	if err != nil {
 		log.Errorf("Error getting channel id for wsID %s: %v", wsID, err)
+		log.Error("Full message:", msg)
 		return ""
 	}
 
