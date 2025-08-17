@@ -8,13 +8,14 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/gofiber/fiber/v2/log"
-	"github.com/gorilla/websocket"
 	"io"
 	"net/http"
 	"regexp"
 	"strings"
 	"time"
+
+	"github.com/gofiber/fiber/v2/log"
+	"github.com/gorilla/websocket"
 )
 
 var vkplWs VkplWs
@@ -273,7 +274,7 @@ func SendWhisperToUser(msgText string, channel string, user *User) {
 	runes := []rune(msgText)
 
 	if len(runes) <= maxSegmentLength {
-		SendMessageToChannel("/w "+user.DisplayName+" "+msgText, channel, user)
+		SendMessageToChannel("/w \""+user.DisplayName+"\" "+msgText, channel, user)
 		return
 	}
 
@@ -283,7 +284,7 @@ func SendWhisperToUser(msgText string, channel string, user *User) {
 			to = len(runes)
 		}
 		segment := string(runes[i:to])
-		SendMessageToChannel("/w "+user.DisplayName+" "+segment, channel, user)
+		SendMessageToChannel("/w \""+user.DisplayName+"\" "+segment, channel, user)
 	}
 }
 
