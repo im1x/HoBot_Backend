@@ -5,11 +5,12 @@ import (
 	DB "HoBot_Backend/internal/mongo"
 	"HoBot_Backend/internal/service/vkplay"
 	"context"
-	"github.com/gofiber/fiber/v2/log"
-	"go.mongodb.org/mongo-driver/bson"
-	"go.mongodb.org/mongo-driver/mongo/options"
 	"sync"
 	"time"
+
+	"github.com/gofiber/fiber/v2/log"
+	"go.mongodb.org/mongo-driver/v2/bson"
+	"go.mongodb.org/mongo-driver/v2/mongo/options"
 )
 
 var UsersSettings = make(map[string]UserSettings)

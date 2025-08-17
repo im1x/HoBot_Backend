@@ -1,10 +1,11 @@
 package telegram
 
 import (
-	"github.com/gofiber/fiber/v2/log"
 	"net/http"
 	"net/url"
 	"os"
+
+	"github.com/gofiber/fiber/v2/log"
 )
 
 func SendMessage(msg string) {

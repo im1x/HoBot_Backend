@@ -8,16 +8,17 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/gofiber/fiber/v2/log"
-	"go.mongodb.org/mongo-driver/bson"
-	"go.mongodb.org/mongo-driver/mongo"
-	"go.mongodb.org/mongo-driver/mongo/options"
 	"io"
 	"net/http"
 	"net/url"
 	"os"
 	"strconv"
 	"time"
+
+	"github.com/gofiber/fiber/v2/log"
+	"go.mongodb.org/mongo-driver/v2/bson"
+	"go.mongodb.org/mongo-driver/v2/mongo"
+	"go.mongodb.org/mongo-driver/v2/mongo/options"
 )
 
 var (
@@ -150,7 +151,7 @@ func InsertOrUpdateUser(ctx context.Context, user model.User) error {
 	log.Info("VKPL: Inserting or updating user")
 	ctx, cancel := context.WithTimeout(ctx, 3*time.Second)
 	defer cancel()
-	_, err := DB.GetCollection(DB.Users).UpdateByID(ctx, user.Id, bson.M{"$set": user}, options.Update().SetUpsert(true))
+	_, err := DB.GetCollection(DB.Users).UpdateByID(ctx, user.Id, bson.M{"$set": user}, options.UpdateOne().SetUpsert(true))
 	if err != nil {
 		log.Error("Error while inserting or updating user:", err)
 		return err

@@ -2,11 +2,12 @@ package chat
 
 import (
 	"context"
-	"github.com/gofiber/fiber/v2/log"
-	"github.com/gorilla/websocket"
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/gofiber/fiber/v2/log"
+	"github.com/gorilla/websocket"
 )
 
 var (

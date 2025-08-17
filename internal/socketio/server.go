@@ -3,10 +3,11 @@ package socketio
 import (
 	tokenService "HoBot_Backend/internal/service/token"
 	"fmt"
+	"os"
+
 	"github.com/gofiber/fiber/v2/log"
 	"github.com/zishang520/engine.io/v2/types"
 	"github.com/zishang520/socket.io/v2/socket"
-	"os"
 )
 
 var io *socket.Server

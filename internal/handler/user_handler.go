@@ -5,12 +5,13 @@ import (
 	"HoBot_Backend/internal/service/token"
 	userService "HoBot_Backend/internal/service/user"
 	"HoBot_Backend/internal/service/vkplay"
+	"os"
+	"time"
+
 	"github.com/go-playground/validator/v10"
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/log"
 	"github.com/golang-jwt/jwt/v5"
-	"os"
-	"time"
 )
 
 var validate = validator.New()

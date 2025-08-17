@@ -2,10 +2,11 @@ package mongo
 
 import (
 	"context"
-	"go.mongodb.org/mongo-driver/mongo"
-	"go.mongodb.org/mongo-driver/mongo/options"
 	"log"
 	"os"
+
+	"go.mongodb.org/mongo-driver/v2/mongo"
+	"go.mongodb.org/mongo-driver/v2/mongo/options"
 )
 
 type CollectionName string
@@ -28,7 +29,7 @@ var DB *mongo.Client = nil
 
 func Connect() {
 	clientOptions := options.Client().ApplyURI(os.Getenv("MONGODB_URI"))
-	client, err := mongo.Connect(ctx, clientOptions)
+	client, err := mongo.Connect(clientOptions)
 	if err != nil {
 		log.Fatal(err)
 	}

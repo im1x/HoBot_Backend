@@ -6,10 +6,11 @@ import (
 	"HoBot_Backend/internal/service/vkplay"
 	"HoBot_Backend/internal/statistics"
 	"fmt"
-	"github.com/gofiber/fiber/v2"
-	"github.com/gofiber/fiber/v2/log"
 	"net/url"
 	"sync"
+
+	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v2/log"
 )
 
 func PlaylistByStreamer(c *fiber.Ctx) error {

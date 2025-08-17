@@ -3,10 +3,11 @@ package statistics
 import (
 	DB "HoBot_Backend/internal/mongo"
 	"context"
-	"github.com/gofiber/fiber/v2/log"
-	"go.mongodb.org/mongo-driver/bson"
-	"go.mongodb.org/mongo-driver/mongo/options"
 	"time"
+
+	"github.com/gofiber/fiber/v2/log"
+	"go.mongodb.org/mongo-driver/v2/bson"
+	"go.mongodb.org/mongo-driver/v2/mongo/options"
 )
 
 type UpdateName string
@@ -29,7 +30,7 @@ func IncField(userId string, fieldName UpdateName) {
 
 		filter := bson.M{"_id": userId}
 		update := bson.M{"$inc": bson.M{string(fieldName): 1}}
-		opt := options.Update().SetUpsert(true)
+		opt := options.UpdateOne().SetUpsert(true)
 
 		_, err := DB.GetCollection(DB.Statistics).UpdateOne(ctx, filter, update, opt)
 		if err != nil {

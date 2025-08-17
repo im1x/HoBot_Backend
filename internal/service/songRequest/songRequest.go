@@ -5,26 +5,26 @@ import (
 	"HoBot_Backend/internal/service/settings"
 	"context"
 	"errors"
-	"github.com/gofiber/fiber/v2/log"
-	"go.mongodb.org/mongo-driver/bson"
-	"go.mongodb.org/mongo-driver/bson/primitive"
-	"go.mongodb.org/mongo-driver/mongo"
-	"go.mongodb.org/mongo-driver/mongo/options"
 	"time"
+
+	"github.com/gofiber/fiber/v2/log"
+	"go.mongodb.org/mongo-driver/v2/bson"
+	"go.mongodb.org/mongo-driver/v2/mongo"
+	"go.mongodb.org/mongo-driver/v2/mongo/options"
 )
 
 var VotesForSkip = make(map[string]*VotesForSkipSong)
 
-func AddSongRequestToDB(songRequest SongRequest) (primitive.ObjectID, error) {
+func AddSongRequestToDB(songRequest SongRequest) (bson.ObjectID, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 	defer cancel()
 	res, err := DB.GetCollection(DB.SongRequests).InsertOne(ctx, songRequest)
 	if err != nil {
 		log.Error("Error while inserting song request:", err)
-		return primitive.NilObjectID, err
+		return bson.NilObjectID, err
 	}
 
-	insertedID := res.InsertedID.(primitive.ObjectID)
+	insertedID := res.InsertedID.(bson.ObjectID)
 
 	return insertedID, nil
 }
@@ -178,7 +178,7 @@ func RemoveSong(channelId, songId string) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 	defer cancel()
 
-	objectId, err := primitive.ObjectIDFromHex(songId)
+	objectId, err := bson.ObjectIDFromHex(songId)
 	if err != nil {
 		return err
 	}

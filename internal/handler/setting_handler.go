@@ -4,9 +4,10 @@ import (
 	"HoBot_Backend/internal/model"
 	"HoBot_Backend/internal/service/settings"
 	"errors"
+	"net/url"
+
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/log"
-	"net/url"
 )
 
 func GetCommands(c *fiber.Ctx) error {

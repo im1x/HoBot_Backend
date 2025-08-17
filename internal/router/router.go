@@ -2,9 +2,10 @@ package router
 
 import (
 	"HoBot_Backend/internal/handler"
+	"os"
+
 	jwtware "github.com/gofiber/contrib/jwt"
 	"github.com/gofiber/fiber/v2"
-	"os"
 )
 
 func Register(app *fiber.App) {

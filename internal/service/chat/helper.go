@@ -6,9 +6,10 @@ import (
 	"HoBot_Backend/internal/service/vkplay"
 	"context"
 	"fmt"
-	"go.mongodb.org/mongo-driver/bson"
 	"strings"
 	"time"
+
+	"go.mongodb.org/mongo-driver/v2/bson"
 )
 
 func isPING(data []byte) bool {

@@ -6,10 +6,11 @@ import (
 	"HoBot_Backend/internal/service/chat"
 	"HoBot_Backend/internal/service/vkplay"
 	"context"
-	"github.com/gofiber/fiber/v2/log"
-	"go.mongodb.org/mongo-driver/bson"
 	"strings"
 	"time"
+
+	"github.com/gofiber/fiber/v2/log"
+	"go.mongodb.org/mongo-driver/v2/bson"
 )
 
 func FixWsIdForAllUsers() {

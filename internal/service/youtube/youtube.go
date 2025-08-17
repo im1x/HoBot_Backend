@@ -2,12 +2,13 @@ package youtube
 
 import (
 	"fmt"
-	"github.com/gofiber/fiber/v2/log"
 	"io"
 	"net/http"
 	"regexp"
 	"strconv"
 	"strings"
+
+	"github.com/gofiber/fiber/v2/log"
 )
 
 func GetVideoInfo(id string) (VideoInfo, error) {

@@ -2,8 +2,9 @@ package voting
 
 import (
 	"HoBot_Backend/internal/socketio"
-	"github.com/gofiber/fiber/v2/log"
 	"sync"
+
+	"github.com/gofiber/fiber/v2/log"
 )
 
 type VotingResult struct {
