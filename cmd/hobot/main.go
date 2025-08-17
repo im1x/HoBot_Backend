@@ -1,17 +1,18 @@
 package main
 
 import (
-	"HoBot_Backend/pkg/mongo"
-	"HoBot_Backend/pkg/router"
-	"HoBot_Backend/pkg/service/chat"
-	"HoBot_Backend/pkg/service/settings"
-	"HoBot_Backend/pkg/service/vkplay"
-	"HoBot_Backend/pkg/socketio"
+	"HoBot_Backend/internal/mongo"
+	"HoBot_Backend/internal/router"
+	"HoBot_Backend/internal/service/chat"
+	"HoBot_Backend/internal/service/settings"
+	"HoBot_Backend/internal/service/vkplay"
+	"HoBot_Backend/internal/socketio"
 	"context"
-	"github.com/gofiber/fiber/v2"
-	"github.com/joho/godotenv"
 	"log"
 	"os"
+
+	"github.com/gofiber/fiber/v2"
+	"github.com/joho/godotenv"
 )
 
 func main() {
