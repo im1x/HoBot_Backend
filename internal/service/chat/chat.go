@@ -159,6 +159,9 @@ func listen() {
 					if payload != "" {
 						param = payload
 					}
+					if cmd == "Lasqa_KP" {
+						param = trimSb
+					}
 					Commands[cmd].Handler(&msg, param)
 				}
 			}
@@ -166,9 +169,15 @@ func listen() {
 	}
 }
 
+func makeContentJSON(seg string) string {
+	arr := []interface{}{seg + " ", "unstyled", []interface{}{}}
+	b, _ := json.Marshal(arr)
+	return string(b)
+}
+
 func SendMessageToChannel(msgText string, channel string, mention *User) {
 	var msg []interface{}
-	msgTextClear := prepareStringForSend(msgText)
+	msgTextClear := msgText
 	if len([]rune(msgTextClear)) > 495 {
 		log.Info("Too long message: (", len([]rune(msgTextClear)), ") ", msgTextClear)
 		msgTextClear = "Невозможно отобразить, слишком длинное сообщение."
@@ -207,7 +216,7 @@ func SendMessageToChannel(msgText string, channel string, mention *User) {
 			txt := &MsgTextContent{
 				Modificator: "",
 				Type:        "text",
-				Content:     fmt.Sprintf("[\"%s \",\"unstyled\",[]]", seg),
+				Content:     makeContentJSON(seg),
 			}
 			msg = append(msg, txt)
 		}
@@ -217,7 +226,7 @@ func SendMessageToChannel(msgText string, channel string, mention *User) {
 			match := matches[i][0]
 			link := &MsgLinkContent{
 				Type:    "link",
-				Content: fmt.Sprintf("[\"%s \",\"unstyled\",[]]", match),
+				Content: makeContentJSON(match),
 				Url:     match,
 			}
 			msg = append(msg, link)
@@ -274,7 +283,7 @@ func SendWhisperToUser(msgText string, channel string, user *User) {
 	runes := []rune(msgText)
 
 	if len(runes) <= maxSegmentLength {
-		SendMessageToChannel("/w \""+user.DisplayName+"\" "+msgText, channel, user)
+		SendMessageToChannel("/w \""+user.DisplayName+"\" "+msgText, channel, nil)
 		return
 	}
 
@@ -284,7 +293,7 @@ func SendWhisperToUser(msgText string, channel string, user *User) {
 			to = len(runes)
 		}
 		segment := string(runes[i:to])
-		SendMessageToChannel("/w \""+user.DisplayName+"\" "+segment, channel, user)
+		SendMessageToChannel("/w \""+user.DisplayName+"\" "+segment, channel, nil)
 	}
 }
 
