@@ -40,6 +40,8 @@ func init() {
 	addCommand("SR_UsersSkipSongNo", srUsersSkipSongNo)
 	addCommand("Print_Text", printText)
 	addCommand("Available_Commands", availableCommands)
+	// Lasqa
+	addCommand("Lasqa_KP", lasqaKp)
 }
 
 func addCommand(name string, handler func(msg *ChatMsg, param string)) {

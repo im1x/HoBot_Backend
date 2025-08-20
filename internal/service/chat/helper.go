@@ -29,6 +29,19 @@ func getAliasAndParamFromMessage(message string) (string, string) {
 	}
 	return commandAndParam[0], commandAndParam[1]
 }
+
+func getAliasAndRestFromMessage(message string) (string, string) {
+	if message == "" {
+		return "", ""
+	}
+	commandAndRest := strings.SplitN(strings.ReplaceAll(message, "\u00a0", " "), " ", 2)
+	if len(commandAndRest) < 2 {
+		commandAndRest = append(commandAndRest, "")
+	}
+	return commandAndRest[0], commandAndRest[1]
+
+}
+
 func getCommandAndPayloadForAlias(alias, channel string) (cmd, param string) {
 	if chnl, ok := vkplay.ChannelsCommands.Channels[channel]; ok {
 		cmd = chnl.Aliases[alias].Command
@@ -73,9 +86,8 @@ func isBotModeratorAndSentMsg(msg *ChatMsg, channelOwner model.User) bool {
 }
 
 func prepareStringForSend(s string) string {
-	res := strings.ReplaceAll(s, "\n", "\\n")
-	res = strings.ReplaceAll(res, `"`, `\"`)
-	return res
+	s = strings.ReplaceAll(s, "\x00", "")
+	return s
 }
 
 func GetUserNameById(ctx context.Context, id string) (string, error) {

@@ -22,6 +22,7 @@ const (
 	SongRequestsHistory                = "SongRequestsHistory"
 	Feedback                           = "Feedback"
 	Statistics                         = "Statistics"
+	PrivilegedLasqaKp                  = "PrivilegedLasqaKp"
 )
 
 var ctx = context.TODO()
