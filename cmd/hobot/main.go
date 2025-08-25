@@ -3,6 +3,7 @@ package main
 import (
 	"HoBot_Backend/internal/mongo"
 	"HoBot_Backend/internal/router"
+	"HoBot_Backend/internal/schedule"
 	"HoBot_Backend/internal/service/chat"
 	"HoBot_Backend/internal/service/settings"
 	"HoBot_Backend/internal/service/vkplay"
@@ -42,6 +43,7 @@ func main() {
 	vkplay.Start(ctx)
 	settings.LoadSettings()
 	chat.Start()
+	schedule.Start()
 
 	//Http server
 	var app *fiber.App

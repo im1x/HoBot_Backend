@@ -4,7 +4,10 @@ import (
 	DB "HoBot_Backend/internal/mongo"
 	"HoBot_Backend/internal/utility"
 	"context"
+	"encoding/json"
 	"fmt"
+	"io"
+	"net/http"
 	"slices"
 	"sort"
 	"strconv"
@@ -37,9 +40,15 @@ type MoviesCache struct {
 	movies     []MovieKp
 }
 
+type DaStatus struct {
+	isOnline      bool
+	isInitialized bool
+}
+
 var (
 	moviesCache MoviesCache
 	cacheTTL    = 1 * time.Hour
+	daStatus    DaStatus
 )
 
 func (c *MoviesCache) refreshCache() ([]MovieKp, error) {
@@ -76,6 +85,13 @@ func (c *MoviesCache) getMovies() ([]MovieKp, error) {
 	c.mu.RUnlock()
 	log.Info("Got movies from db")
 	return c.refreshCache()
+}
+
+func (ds *DaStatus) SetStatus(online bool) (statusChanged bool) {
+	statusChanged = ds.isInitialized && online && !ds.isOnline
+	ds.isOnline = online
+	ds.isInitialized = true
+	return
 }
 
 func getMoviesFromDb() ([]MovieKp, error) {
@@ -226,4 +242,37 @@ func lasqaKp(msg *ChatMsg, param string) {
 	}
 
 	SendWhisperToUser(formatMsg(sMov, lang), msg.GetChannelId(), msg.GetUser())
+}
+
+func CheckDonationAlertsStatus() {
+	resp, err := http.Get("https://www.donationalerts.com/api/v1/user/lasqa/donationpagesettings")
+	if err != nil || resp.StatusCode != 200 {
+		log.Error("Error while check DA status")
+		return
+	}
+	defer resp.Body.Close()
+
+	type DaResponse struct {
+		Data struct {
+			IsOnline int `json:"is_online"`
+		} `json:"data"`
+	}
+
+	var daResp DaResponse
+	b, err := io.ReadAll(resp.Body)
+	if err != nil {
+		log.Error("Error while check DA status, read body:", err)
+		return
+	}
+
+	err = json.Unmarshal(b, &daResp)
+	if err != nil {
+		log.Error("Error while unmarshal DA response:", err)
+	}
+
+	isOnline := daResp.Data.IsOnline == 1
+
+	if changed := daStatus.SetStatus(isOnline); changed {
+		SendMessageToChannel("👀 Стример зашел в DonationAlerts", "8845069", nil)
+	}
 }
