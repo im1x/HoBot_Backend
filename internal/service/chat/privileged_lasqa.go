@@ -189,13 +189,13 @@ func formatMsg(m []MovieRating, lang lingua.Language) string {
 	}
 	result := ""
 	if len(m) == 1 {
-		result += fmt.Sprintf("%s -🌟%d (📅%s)",
+		result += fmt.Sprintf("%s&ensp;🌟%d&ensp;📅%s",
 			getTitle(m[0].movie, lang),
 			m[0].movie.Rating,
 			m[0].movie.Date.Format("02.01.2006 15:04"))
 	} else {
 		for i, mv := range m {
-			result += fmt.Sprintf("%s %s -🌟%d (📅%s)&#12288;&#12288;",
+			result += fmt.Sprintf("%s %s&ensp;🌟%d&ensp;📅%s &#12288;&#12288;",
 				numEmoji[i],
 				getTitle(mv.movie, lang),
 				mv.movie.Rating,
@@ -235,10 +235,6 @@ func lasqaKp(msg *ChatMsg, param string) {
 	if len(sMov) == 0 {
 		SendWhisperToUser("🎬🍿 Ничего не нашлось", msg.GetChannelId(), msg.GetUser())
 		return
-	}
-
-	for _, m := range sMov {
-		log.Infof("%s (%f)\n", getTitle(m.movie, lang), m.rank)
 	}
 
 	SendWhisperToUser(formatMsg(sMov, lang), msg.GetChannelId(), msg.GetUser())
