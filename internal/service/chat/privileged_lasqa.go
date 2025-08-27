@@ -181,25 +181,22 @@ func formatMsg(m []MovieRating, lang lingua.Language) string {
 		2: "3️⃣",
 		3: "4️⃣",
 		4: "5️⃣",
-		5: "6️⃣",
-		6: "7️⃣",
-		7: "8️⃣",
-		8: "9️⃣",
-		9: "🔟",
 	}
 	result := ""
+	resFormat := "%s&ensp;🌟%d&ensp;📅%s"
+	dataFormat := "02.01.2006 15:04"
 	if len(m) == 1 {
-		result += fmt.Sprintf("%s&ensp;🌟%d&ensp;📅%s",
+		result += fmt.Sprintf(resFormat,
 			getTitle(m[0].movie, lang),
 			m[0].movie.Rating,
-			m[0].movie.Date.Format("02.01.2006 15:04"))
+			m[0].movie.Date.Format(dataFormat))
 	} else {
 		for i, mv := range m {
-			result += fmt.Sprintf("%s %s&ensp;🌟%d&ensp;📅%s &#12288;&#12288;",
+			result += fmt.Sprintf("%s "+resFormat+" &#12288;&#12288;",
 				numEmoji[i],
 				getTitle(mv.movie, lang),
 				mv.movie.Rating,
-				mv.movie.Date.Format("02.01.2006 15:04"))
+				mv.movie.Date.Format(dataFormat))
 		}
 	}
 
