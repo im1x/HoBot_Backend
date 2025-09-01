@@ -222,7 +222,7 @@ func lasqaKp(msg *ChatMsg, param string) {
 			return movies[i].Date.After(movies[j].Date)
 		})
 		SendWhisperToUser("🎬🍿 Всего фильмов - "+strconv.Itoa(len(movies))+
-			" Последний добавленный фильм: "+movies[0].TitleRu, msg.GetChannelId(), msg.GetUser())
+			". Последний добавленный фильм: "+movies[0].TitleRu+"&ensp;📅"+movies[0].Date.Format("02.01.2006 15:04"), msg.GetChannelId(), msg.GetUser())
 		return
 	}
 
