@@ -260,17 +260,46 @@ func SendMessageToChannel(msgText string, channel string, mention *User) {
 	req.Header.Add("X-From-Id", vkplay.AuthVkpl.ClientID)
 
 	client := http.Client{}
-	resp, err := client.Do(req)
-	if err != nil {
-		log.Error("Error while sending message to channel:", err)
-		return
-	}
-	defer resp.Body.Close()
 
-	if resp.StatusCode != 200 {
-		rd, _ := io.ReadAll(resp.Body)
-		log.Error("Error while sending message to channel ", channel, ": ", string(rd))
+	for attempt := 0; attempt < 3; attempt++ {
+		resp, err := client.Do(req)
+		if err != nil {
+			log.Error("Error while sending message to channel:", err)
+			return
+		}
+
+		body, _ := io.ReadAll(resp.Body)
+		resp.Body.Close()
+
+		if resp.StatusCode != http.StatusOK {
+			var errResp ErrorResponse
+			if jerr := json.Unmarshal(body, &errResp); jerr != nil {
+				log.Error("Failed to unmarshal error response:", jerr)
+				break
+			}
+
+			shouldRetry := false
+			for _, reason := range errResp.Data.Reasons {
+				if reason.Type == "slow_mode_cooldown" {
+					shouldRetry = true
+					log.Info("Waiting for slow mode cooldown...")
+					time.Sleep(time.Duration((attempt+1)*500) * time.Millisecond)
+					break
+				}
+			}
+
+			if shouldRetry {
+				continue
+			}
+
+			// other errors
+			log.Error("Error while sending message to channel:", string(body))
+			break
+		}
+
+		break
 	}
+
 }
 
 func SendWhisperToUser(msgText string, channel string, user *User) {

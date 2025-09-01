@@ -183,3 +183,14 @@ type MsgMentionContent struct {
 	DisplayName string `json:"displayName"`
 	Name        string `json:"name"`
 }
+
+type ErrorResponse struct {
+	ErrorDescription string `json:"error_description"`
+	Error            string `json:"error"`
+	Data             struct {
+		Reasons []struct {
+			RemainingTime int    `json:"remainingTime"`
+			Type          string `json:"type"`
+		} `json:"reasons"`
+	} `json:"data"`
+}
