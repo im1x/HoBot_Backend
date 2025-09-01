@@ -1,0 +1,39 @@
+version: '3'
+
+vars:
+  BASE_NAME: 'hobot' # Base name for the output file
+
+tasks:
+  default:
+    desc: Build and run
+    aliases: [run]
+    cmds:
+      - task: build
+      - ./{{.BASE_NAME}}
+
+  win:
+    desc: Set target OS to Windows and build
+    cmds:
+      - task: build
+
+  linux:
+    desc: Set target OS to Linux and build
+    cmds:
+      - task: build
+        vars:
+          GOOS: 'linux'
+          OUTFILE: '{{.BASE_NAME}}'
+
+  build:
+    desc: Build the app
+    vars:
+      EXE: '{{ .BASE_NAME }}.exe'
+      OUTFILE: '{{ .OUTFILE | default .EXE }}'
+      GOOS: '{{ .GOOS | default "windows" }}'
+    cmds:
+      - GOOS={{.GOOS}} GOARCH=amd64 go build -ldflags="-s -w" -trimpath -o {{.OUTFILE}} ./cmd/hobot/main.go
+
+  lint:
+    desc: Run golangci-lint
+    cmds:
+      - golangci-lint run
