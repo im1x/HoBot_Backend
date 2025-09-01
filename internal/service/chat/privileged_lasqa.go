@@ -79,11 +79,9 @@ func (c *MoviesCache) getMovies() ([]MovieKp, error) {
 	if time.Since(c.lastUpdate) < cacheTTL {
 		data := c.movies
 		c.mu.RUnlock()
-		log.Info("Got movies from cache")
 		return data, nil
 	}
 	c.mu.RUnlock()
-	log.Info("Got movies from db")
 	return c.refreshCache()
 }
 
