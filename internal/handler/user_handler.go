@@ -2,6 +2,7 @@ package handler
 
 import (
 	"HoBot_Backend/internal/model"
+	repoUser "HoBot_Backend/internal/repository/user"
 	"HoBot_Backend/internal/service/token"
 	userService "HoBot_Backend/internal/service/user"
 	"HoBot_Backend/internal/service/vkplay"
@@ -14,15 +15,23 @@ import (
 	"github.com/golang-jwt/jwt/v5"
 )
 
-var validate = validator.New()
+type UserHandler struct {
+	validate    *validator.Validate
+	userRepo    repoUser.Repository
+	userService *userService.UserService
+}
 
-func Logout(c *fiber.Ctx) error {
+func NewUserHandler(validate *validator.Validate, userService *userService.UserService, userRepo repoUser.Repository) *UserHandler {
+	return &UserHandler{validate: validate, userService: userService, userRepo: userRepo}
+}
+
+func (s *UserHandler) Logout(c *fiber.Ctx) error {
 	refreshToken := c.Cookies("refreshToken")
 	if refreshToken == "" {
 		return fiber.NewError(fiber.StatusUnauthorized)
 	}
 
-	err := userService.Logout(c.Context(), refreshToken)
+	err := s.userService.Logout(c.Context(), refreshToken)
 	if err != nil {
 		return err
 	}
@@ -31,12 +40,12 @@ func Logout(c *fiber.Ctx) error {
 	return nil
 }
 
-func Refresh(c *fiber.Ctx) error {
+func (s *UserHandler) Refresh(c *fiber.Ctx) error {
 	refreshTokenCookie := c.Cookies("refreshToken")
 	if refreshTokenCookie == "" {
 		return fiber.NewError(fiber.StatusUnauthorized)
 	}
-	accessToken, refreshToken, err := userService.RefreshToken(c.Context(), refreshTokenCookie)
+	accessToken, refreshToken, err := s.userService.RefreshToken(c.Context(), refreshTokenCookie)
 	if err != nil {
 		return err
 	}
@@ -51,7 +60,7 @@ func Refresh(c *fiber.Ctx) error {
 	return c.JSON(model.AccessToken{AccessToken: accessToken})
 }
 
-func VkplAuth(c *fiber.Ctx) error {
+func (s *UserHandler) VkplAuth(c *fiber.Ctx) error {
 	code := c.Query("code")
 	if code == "" {
 		return fiber.NewError(fiber.StatusUnauthorized)
@@ -75,7 +84,7 @@ func VkplAuth(c *fiber.Ctx) error {
 		return c.Redirect(os.Getenv("CLIENT_URL") + "?s=1")
 	}
 
-	refreshToken, err := userService.LoginVkpl(c.Context(), userInfo)
+	refreshToken, err := s.userService.LoginVkpl(c.Context(), userInfo)
 	if err != nil {
 		log.Error(err)
 		return err
@@ -91,9 +100,9 @@ func VkplAuth(c *fiber.Ctx) error {
 	return c.Redirect(os.Getenv("CLIENT_URL"))
 }
 
-func GetCurrentUser(c *fiber.Ctx) error {
+func (s *UserHandler) GetCurrentUser(c *fiber.Ctx) error {
 	userId := parseUserIdFromRequest(c)
-	user, err := userService.GetCurrentUser(c.Context(), userId)
+	user, err := s.userRepo.GetUser(c.Context(), userId)
 	if err != nil {
 		log.Error("Error while getting user info:", err)
 		return fiber.NewError(fiber.StatusBadRequest)
@@ -101,15 +110,15 @@ func GetCurrentUser(c *fiber.Ctx) error {
 	return c.JSON(user)
 }
 
-func WipeUser(c *fiber.Ctx) error {
+func (s *UserHandler) WipeUser(c *fiber.Ctx) error {
 	userId := parseUserIdFromRequest(c)
-	err := userService.WipeUser(c.Context(), userId)
+	err := s.userService.WipeUser(c.Context(), userId)
 	if err != nil {
 		log.Error("Error while wiping user:", err)
 		return err
 	}
 
-	return Logout(c)
+	return s.Logout(c)
 }
 
 func parseUserIdFromRequest(c *fiber.Ctx) string {

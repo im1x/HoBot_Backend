@@ -1,7 +1,6 @@
 package voting
 
 import (
-	"HoBot_Backend/internal/socketio"
 	"sync"
 
 	"github.com/gofiber/fiber/v2/log"
@@ -56,7 +55,7 @@ type VotingData struct {
 	AllRatings []int
 }
 
-func (v *VotingData) AddVote(channelId string, userId int, userName string, option int) {
+func (v *VotingData) AddVote(channelId string, userId int, userName string, option int) bool {
 	if !v.HasVoted(userId) {
 		v.Lock()
 		v.AlreadyVoted[userId] = true
@@ -70,8 +69,9 @@ func (v *VotingData) AddVote(channelId string, userId int, userName string, opti
 			v.AllRatings = append(v.AllRatings, option)
 		}
 		v.Unlock()
-		socketio.Emit(channelId, socketio.VotingVote, &Vote{Name: userName, Vote: option})
+		return true
 	}
+	return false
 }
 
 func (v *VotingData) HasVoted(userID int) bool {

@@ -8,16 +8,16 @@ import (
 	"github.com/gofiber/fiber/v2"
 )
 
-func Register(app *fiber.App) {
+func Register(app *fiber.App, commonHandler *handler.CommonHandler, settingHandler *handler.SettingHandler, songRequestHandler *handler.SongRequestHandler, userHandler *handler.UserHandler, votingHandler *handler.VotingHandler) {
 	api := app.Group("/api")
 
-	api.Post("/logout", handler.Logout)
-	api.Get("/refresh", handler.Refresh)
-	api.Get("/vkpl", handler.VkplAuth)
-	api.Get("/fCG7qDwksSthNCCczcpTXeDD/:id", handler.TerminateApp)
+	api.Post("/logout", userHandler.Logout)
+	api.Get("/refresh", userHandler.Refresh)
+	api.Get("/vkpl", userHandler.VkplAuth)
+	api.Get("/fCG7qDwksSthNCCczcpTXeDD/:id", commonHandler.TerminateApp)
 
 	songRequest := api.Group("/songrequest")
-	songRequest.Get("/playlist/:streamer", handler.PlaylistByStreamer)
+	songRequest.Get("/playlist/:streamer", songRequestHandler.PlaylistByStreamer)
 
 	app.Use(jwtware.New(jwtware.Config{
 		ErrorHandler: func(c *fiber.Ctx, err error) error {
@@ -26,30 +26,30 @@ func Register(app *fiber.App) {
 		SigningKey: jwtware.SigningKey{Key: []byte(os.Getenv("JWT_ACCESS_SECRET"))},
 	}))
 
-	api.Get("/user", handler.GetCurrentUser)
-	api.Delete("/user/", handler.WipeUser)
+	api.Get("/user", userHandler.GetCurrentUser)
+	api.Delete("/user/", userHandler.WipeUser)
 
-	api.Post("/feedback", handler.Feedback)
+	api.Post("/feedback", commonHandler.Feedback)
 
 	settings := api.Group("/settings")
-	settings.Get("/commands", handler.GetCommands)
-	settings.Get("/commandsdropdown", handler.GetCommandsDropdown)
-	settings.Post("/commands", handler.AddCommandAndAlias)
-	settings.Put("commands/:alias", handler.EditCommand)
-	settings.Delete("/commands/:alias", handler.DeleteCommand)
-	settings.Post("/volume/:volume", handler.SaveVolume)
-	settings.Get("/volume", handler.GetVolume)
-	settings.Post("songrequests", handler.ChangeSongRequestsSettings)
-	settings.Get("/songrequests", handler.GetSongRequestsSettings)
+	settings.Get("/commands", settingHandler.GetCommands)
+	settings.Get("/commandsdropdown", settingHandler.GetCommandsDropdown)
+	settings.Post("/commands", settingHandler.AddCommandAndAlias)
+	settings.Put("commands/:alias", settingHandler.EditCommand)
+	settings.Delete("/commands/:alias", settingHandler.DeleteCommand)
+	settings.Post("/volume/:volume", settingHandler.SaveVolume)
+	settings.Get("/volume", settingHandler.GetVolume)
+	settings.Post("songrequests", settingHandler.ChangeSongRequestsSettings)
+	settings.Get("/songrequests", settingHandler.GetSongRequestsSettings)
 
-	songRequest.Get("/playlist", handler.Playlist)
-	songRequest.Post("/skip", handler.SkipSong)
-	songRequest.Delete("/playlist", handler.ClearPlaylist)
-	songRequest.Delete("/playlist/:id", handler.RemoveSong)
+	songRequest.Get("/playlist", songRequestHandler.Playlist)
+	songRequest.Post("/skip", songRequestHandler.SkipSong)
+	songRequest.Delete("/playlist", songRequestHandler.ClearPlaylist)
+	songRequest.Delete("/playlist/:id", songRequestHandler.RemoveSong)
 
 	voting := api.Group("/voting")
-	voting.Get("/", handler.GetVotingState)
-	voting.Post("/start", handler.StartVoting)
-	voting.Post("/stop", handler.StopVoting)
+	voting.Get("/", votingHandler.GetVotingState)
+	voting.Post("/start", votingHandler.StartVoting)
+	voting.Post("/stop", votingHandler.StopVoting)
 
 }

@@ -4,6 +4,7 @@ import (
 	"HoBot_Backend/internal/model"
 	"HoBot_Backend/internal/service/vkplay"
 	"HoBot_Backend/internal/service/voting"
+	"HoBot_Backend/internal/socketio"
 	"bytes"
 	"context"
 	"encoding/json"
@@ -14,42 +15,82 @@ import (
 	"strings"
 	"time"
 
+	repoConfig "HoBot_Backend/internal/repository/config"
+	repoUser "HoBot_Backend/internal/repository/user"
+	repoVkpl "HoBot_Backend/internal/repository/vkpl"
+
 	"github.com/gofiber/fiber/v2/log"
 	"github.com/gorilla/websocket"
 )
 
-var vkplWs VkplWs
-var wsConIds = make(map[int]string)
+type ChatService struct {
+	vkplWs   VkplWs
+	wsConIds map[int]string
 
-func Start() {
-	err := connectWS()
+	ctxApp         context.Context
+	vkplRepo       repoVkpl.Repository
+	userRepo       repoUser.Repository
+	configRepo     repoConfig.Repository
+	socketioServer *socketio.SocketServer
+	vkplService    *vkplay.VkplService
+	votingService  *voting.VotingService
+	commandService *CommandService
+}
+
+func NewChatService(ctxApp context.Context, socketioServer *socketio.SocketServer, vkplRepo repoVkpl.Repository, userRepo repoUser.Repository, configRepo repoConfig.Repository, vkplService *vkplay.VkplService, votingService *voting.VotingService) *ChatService {
+
+	return &ChatService{
+		vkplWs:         VkplWs{},
+		wsConIds:       make(map[int]string),
+		ctxApp:         ctxApp,
+		vkplRepo:       vkplRepo,
+		userRepo:       userRepo,
+		configRepo:     configRepo,
+		socketioServer: socketioServer,
+		vkplService:    vkplService,
+		votingService:  votingService,
+		commandService: nil,
+	}
+}
+
+func (s *ChatService) SetCommandService(commandService *CommandService) {
+	s.commandService = commandService
+}
+
+func (s *ChatService) Start() {
+	if s.commandService == nil {
+		log.Error("Command service is not set")
+		return
+	}
+
+	err := s.connectWS()
 	if err != nil {
 		log.Error(err)
 	}
 
-	go listen()
-	go checkWsConns()
+	go s.listen()
+	go s.checkWsConns()
 }
-func listen() {
+func (s *ChatService) listen() {
 	for {
-		p, err := readWSMessage()
+		p, err := s.readWSMessage()
 		//log.Info(string(p))
 		if err != nil {
 			log.Error("Error while reading ws message:", err)
 			log.Info("VKPL: Reconnecting to ws")
-			err := connectWS()
+			err := s.connectWS()
 			if err != nil {
 				log.Error("Error while reconnecting to ws:", err)
 			}
 			continue
 		}
 		if isPING(p) {
-			err := sendWSMessage([]byte("{}"))
+			err := s.sendWSMessage([]byte("{}"))
 			if err != nil {
 				log.Error("Error while sending ws ping message:", err)
 			}
 		} else {
-			var msg ChatMsg
+			var msg model.ChatMsg
 			err = json.Unmarshal(p, &msg)
 			if err != nil && !strings.Contains(string(p), "subscribe") {
 				log.Error("Error while unmarshalling ws message:", err)
@@ -87,7 +128,7 @@ func listen() {
 					if err != nil {
 						log.Error("WS2 Error while unmarshalling ws message:", err)
 					}
-					delete(wsConIds, wsMsg.ID)
+					delete(s.wsConIds, wsMsg.ID)
 				}
 
 			}
@@ -143,18 +184,20 @@ func listen() {
 
 				alias, param := getAliasAndParamFromMessage(trimSb)
 
-				if voting.Voting[msg.GetChannelId()] != nil && voting.Voting[msg.GetChannelId()].IsVotingInProgress {
-					if value, isContained := voting.Voting[msg.GetChannelId()].VotingAnswers[alias]; isContained {
-						voting.Voting[msg.GetChannelId()].AddVote(msg.GetChannelId(), msg.GetUser().ID, msg.GetUser().DisplayName, value)
+				if s.votingService.Voting[msg.GetChannelId(s.userRepo.GetUserIdByWs)] != nil && s.votingService.Voting[msg.GetChannelId(s.userRepo.GetUserIdByWs)].IsVotingInProgress {
+					if value, isContained := s.votingService.Voting[msg.GetChannelId(s.userRepo.GetUserIdByWs)].VotingAnswers[alias]; isContained {
+						if s.votingService.Voting[msg.GetChannelId(s.userRepo.GetUserIdByWs)].AddVote(msg.GetChannelId(s.userRepo.GetUserIdByWs), msg.GetUser().ID, msg.GetUser().DisplayName, value) {
+							s.socketioServer.Emit(msg.GetChannelId(s.userRepo.GetUserIdByWs), socketio.VotingVote, &voting.Vote{Name: msg.GetUser().DisplayName, Vote: value})
+						}
 						continue
 					}
 				}
 
-				if !hasAccess(alias, &msg) {
+				if !s.hasAccess(alias, &msg) {
 					continue
 				}
 
-				cmd, payload := getCommandAndPayloadForAlias(alias, msg.GetChannelId())
+				cmd, payload := s.getCommandAndPayloadForAlias(alias, msg.GetChannelId(s.userRepo.GetUserIdByWs))
 				if cmd != "" {
 					if payload != "" {
 						param = payload
@@ -162,20 +205,14 @@ func listen() {
 					if cmd == "Lasqa_KP" {
 						param = trimSb
 					}
-					Commands[cmd].Handler(&msg, param)
+					s.commandService.Commands[cmd].Handler(&msg, param)
 				}
 			}
 		}
 	}
 }
 
-func makeContentJSON(seg string) string {
-	arr := []interface{}{seg + " ", "unstyled", []interface{}{}}
-	b, _ := json.Marshal(arr)
-	return string(b)
-}
-
-func SendMessageToChannel(msgText string, channel string, mention *User) {
+func (s *ChatService) SendMessageToChannel(msgText string, channel string, mention *model.UserVk) {
 	var msg []interface{}
 	msgTextClear := msgText
 	if len([]rune(msgTextClear)) > 495 {
@@ -183,10 +220,10 @@ func SendMessageToChannel(msgText string, channel string, mention *User) {
 		msgTextClear = "Невозможно отобразить, слишком длинное сообщение."
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	ctx, cancel := context.WithTimeout(s.ctxApp, 5*time.Second)
 	defer cancel()
 
-	userId, err := GetUserNameById(ctx, channel)
+	userDb, err := s.userRepo.GetUser(ctx, channel)
 	if err != nil {
 		log.Error("Error while getting user id:", err)
 		return
@@ -247,7 +284,7 @@ func SendMessageToChannel(msgText string, channel string, mention *User) {
 	body := strings.NewReader("data=" + string(b))
 
 	// Creating and sending the request
-	req, err := http.NewRequest("POST", fmt.Sprintf("https://api.live.vkvideo.ru/v1/blog/%s/public_video_stream/chat", userId), body)
+	req, err := http.NewRequest("POST", fmt.Sprintf("https://api.live.vkvideo.ru/v1/blog/%s/public_video_stream/chat", userDb.Channel), body)
 	if err != nil {
 		log.Error("Error while sending message to channel:", err)
 		return
@@ -256,8 +293,8 @@ func SendMessageToChannel(msgText string, channel string, mention *User) {
 	req.Header.Add("Origin", "https://live.vkvideo.ru")
 	req.Header.Add("Referer", fmt.Sprintf("https://live.vkvideo.ru/%s", channel))
 	req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
-	req.Header.Add("Authorization", "Bearer "+vkplay.GetVkplToken())
-	req.Header.Add("X-From-Id", vkplay.AuthVkpl.ClientID)
+	req.Header.Add("Authorization", "Bearer "+s.vkplService.GetVkplToken())
+	req.Header.Add("X-From-Id", s.vkplService.AuthVkpl.ClientID)
 
 	client := http.Client{}
 
@@ -302,7 +339,7 @@ func SendMessageToChannel(msgText string, channel string, mention *User) {
 
 }
 
-func SendWhisperToUser(msgText string, channel string, user *User) {
+func (s *ChatService) SendWhisperToUser(msgText string, channel string, user *model.UserVk) {
 	displayNameRunes := []rune(user.DisplayName)
 	overhead := len(displayNameRunes) + 4 // 4 accounts for "/w " and a space
 
@@ -312,7 +349,7 @@ func SendWhisperToUser(msgText string, channel string, user *User) {
 	runes := []rune(msgText)
 
 	if len(runes) <= maxSegmentLength {
-		SendMessageToChannel("/w \""+user.DisplayName+"\" "+msgText, channel, nil)
+		s.SendMessageToChannel("/w \""+user.DisplayName+"\" "+msgText, channel, nil)
 		return
 	}
 
@@ -322,51 +359,51 @@ func SendWhisperToUser(msgText string, channel string, user *User) {
 			to = len(runes)
 		}
 		segment := string(runes[i:to])
-		SendMessageToChannel("/w \""+user.DisplayName+"\" "+segment, channel, nil)
+		s.SendMessageToChannel("/w \""+user.DisplayName+"\" "+segment, channel, nil)
 	}
 }
 
-func AddUserToWs(user model.User) error {
+func (s *ChatService) AddUserToWs(user model.User) error {
 	// DB
-	wsChannels := vkplay.GetWsChannelsFromDB()
+	wsChannels := s.configRepo.GetWsChannels(s.ctxApp)
 	wsChannels.ChannelsAutoJoin = append(wsChannels.ChannelsAutoJoin, user.ChannelWS)
-	err := vkplay.SaveWsChannelsToDB(wsChannels)
+	err := s.configRepo.SaveWsChannels(s.ctxApp, wsChannels)
 	if err != nil {
 		log.Error("Error while adding user to ws:", err)
 		return err
 	}
 
 	// WS
-	err = joinOrLeaveChat(user.ChannelWS, true)
+	err = s.joinOrLeaveChat(user.ChannelWS, true)
 	if err != nil {
 		log.Error("Error while joining chat for new user:", err)
 		return err
 	}
 
-	SendMessageToChannel("Бот подключился к чату. Для нормальной работы боту необходимы права модератора. Выдать права боту можно командой \"/mod channel HoBOT\"", user.Id, nil)
+	s.SendMessageToChannel("Бот подключился к чату. Для нормальной работы боту необходимы права модератора. Выдать права боту можно командой \"/mod channel HoBOT\"", user.Id, nil)
 
 	return nil
 }
 
-func RemoveUserFromWs(user model.User) error {
+func (s *ChatService) RemoveUserFromWs(user model.User) error {
 	// DB
-	wsChannels := vkplay.GetWsChannelsFromDB()
+	wsChannels := s.configRepo.GetWsChannels(s.ctxApp)
 	for i, v := range wsChannels.ChannelsAutoJoin {
 		if v == user.ChannelWS {
 			wsChannels.ChannelsAutoJoin = append(wsChannels.ChannelsAutoJoin[:i], wsChannels.ChannelsAutoJoin[i+1:]...)
 			break
 		}
 	}
-	err := vkplay.SaveWsChannelsToDB(wsChannels)
+	err := s.configRepo.SaveWsChannels(s.ctxApp, wsChannels)
 	if err != nil {
 		log.Error("Error while removing user from ws:", err)
 		return err
 	}
 
-	SendMessageToChannel("Бот покинул чат.", user.Id, nil)
+	s.SendMessageToChannel("Бот покинул чат.", user.Id, nil)
 
 	// WS
-	err = joinOrLeaveChat(user.ChannelWS, false)
+	err = s.joinOrLeaveChat(user.ChannelWS, false)
 	if err != nil {
 		log.Error("Error while leaving chat for removed user:", err)
 		return err
@@ -374,28 +411,28 @@ func RemoveUserFromWs(user model.User) error {
 	return nil
 }
 
-func UpdateUserInWs(oldUserId string, newUserId string) error {
+func (s *ChatService) UpdateUserInWs(oldUserId string, newUserId string) error {
 	// DB
-	wsChannels := vkplay.GetWsChannelsFromDB()
+	wsChannels := s.configRepo.GetWsChannels(s.ctxApp)
 	for i, v := range wsChannels.ChannelsAutoJoin {
 		if v == oldUserId {
 			wsChannels.ChannelsAutoJoin[i] = newUserId
 			break
 		}
 	}
-	err := vkplay.SaveWsChannelsToDB(wsChannels)
+	err := s.configRepo.SaveWsChannels(s.ctxApp, wsChannels)
 	if err != nil {
 		log.Error("Error while updating user in ws:", err)
 		return err
 	}
 
 	// WS
-	err = joinOrLeaveChat(oldUserId, false)
+	err = s.joinOrLeaveChat(oldUserId, false)
 	if err != nil {
 		log.Error("Error while leaving chat for updated user:", err)
 		return err
 	}
-	err = joinOrLeaveChat(newUserId, true)
+	err = s.joinOrLeaveChat(newUserId, true)
 	if err != nil {
 		log.Error("Error while joining chat for updated user:", err)
 		return err
@@ -403,13 +440,13 @@ func UpdateUserInWs(oldUserId string, newUserId string) error {
 	return nil
 }
 
-func connectWS() error {
-	vkplWs.wsCounter = 0
-	wsToken := getWsToken()
+func (s *ChatService) connectWS() error {
+	s.vkplWs.wsCounter = 0
+	wsToken := s.getWsToken()
 	if wsToken == "" {
 		return fmt.Errorf("ws token is empty")
 	}
-	vkplWs.wsToken = wsToken
+	s.vkplWs.wsToken = wsToken
 
 	h := http.Header{
 		"Origin": {"https://live.vkvideo.ru"},
@@ -420,22 +457,22 @@ func connectWS() error {
 		return err
 	}
 
-	vkplWs.wsConnect = wsCon
-	vkplWs.wsCounter++
-	t := fmt.Sprintf(`{"connect":{"token":"%s","name":"js"},"id":%d}`, vkplWs.wsToken, vkplWs.wsCounter)
-	err = sendWSMessage([]byte(t))
+	s.vkplWs.wsConnect = wsCon
+	s.vkplWs.wsCounter++
+	t := fmt.Sprintf(`{"connect":{"token":"%s","name":"js"},"id":%d}`, s.vkplWs.wsToken, s.vkplWs.wsCounter)
+	err = s.sendWSMessage([]byte(t))
 	if err != nil {
 		return err
 	}
 
-	_, _, err = vkplWs.wsConnect.ReadMessage()
+	_, _, err = s.vkplWs.wsConnect.ReadMessage()
 	if err != nil {
 		log.Error("Error while reading ws message. Check:", err)
 		return err
 	}
 
-	vkplWs.wsCounter++
-	err = joinAllChats()
+	s.vkplWs.wsCounter++
+	err = s.joinAllChats()
 	if err != nil {
 		log.Error("Error while joining chat:", err)
 		return err
@@ -443,8 +480,8 @@ func connectWS() error {
 	return nil
 }
 
-func getWsToken() string {
-	authVkplToken := vkplay.GetVkplToken()
+func (s *ChatService) getWsToken() string {
+	authVkplToken := s.vkplService.GetVkplToken()
 	if authVkplToken == "" {
 		return ""
 	}
@@ -454,7 +491,7 @@ func getWsToken() string {
 		return ""
 	}
 	req.Header.Add("Authorization", "Bearer "+authVkplToken)
-	req.Header.Add("X-From-Id", vkplay.AuthVkpl.ClientID)
+	req.Header.Add("X-From-Id", s.vkplService.AuthVkpl.ClientID)
 	req.Header.Add("Origin", "https://live.vkvideo.ru")
 	req.Header.Add("Referer", "https://live.vkvideo.ru/")
 
@@ -481,9 +518,9 @@ func getWsToken() string {
 	return token["token"].(string)
 }
 
-func sendWSMessage(p []byte) error {
-	vkplWs.wsCounter++
-	err := vkplWs.wsConnect.WriteMessage(websocket.TextMessage, p)
+func (s *ChatService) sendWSMessage(p []byte) error {
+	s.vkplWs.wsCounter++
+	err := s.vkplWs.wsConnect.WriteMessage(websocket.TextMessage, p)
 	if err != nil {
 		log.Error("Error while sending ws message:", err)
 		return err
@@ -491,16 +528,16 @@ func sendWSMessage(p []byte) error {
 	return nil
 }
 
-func readWSMessage() (p []byte, err error) {
-	_, p, err = vkplWs.wsConnect.ReadMessage()
+func (s *ChatService) readWSMessage() (p []byte, err error) {
+	_, p, err = s.vkplWs.wsConnect.ReadMessage()
 	if err != nil {
 		return nil, err
 	}
 	return p, nil
 }
 
-func joinOrLeaveChat(channel string, join bool) error {
-	vkplWs.wsCounter++
+func (s *ChatService) joinOrLeaveChat(channel string, join bool) error {
+	s.vkplWs.wsCounter++
 	action := "subscribe"
 	if !join {
 		action = "unsubscribe"
@@ -508,26 +545,26 @@ func joinOrLeaveChat(channel string, join bool) error {
 
 	// ----------
 	if join {
-		wsConIds[vkplWs.wsCounter] = channel
+		s.wsConIds[s.vkplWs.wsCounter] = channel
 	}
 	// ----------
 
-	p := fmt.Sprintf(`{"%s":{"channel":"channel-chat:%s"},"id":%d}`, action, channel, vkplWs.wsCounter)
-	err := sendWSMessage([]byte(p))
+	p := fmt.Sprintf(`{"%s":{"channel":"channel-chat:%s"},"id":%d}`, action, channel, s.vkplWs.wsCounter)
+	err := s.sendWSMessage([]byte(p))
 	if err != nil {
 		return err
 	}
 	return nil
 }
 
-func joinAllChats() error {
-	channels := vkplay.GetWsChannelsFromDB().ChannelsAutoJoin
+func (s *ChatService) joinAllChats() error {
+	channels := s.configRepo.GetWsChannels(s.ctxApp).ChannelsAutoJoin
 
 	for _, channel := range channels {
 		//if (i+1)%20 == 0 {
 		//time.Sleep(1 * time.Second)
 		//}
-		err := joinOrLeaveChat(channel, true)
+		err := s.joinOrLeaveChat(channel, true)
 		if err != nil {
 			log.Error("Error while joining chat:", err)
 			return err
@@ -536,11 +573,41 @@ func joinAllChats() error {
 	return nil
 }
 
-func checkWsConns() {
+func (s *ChatService) isBotModeratorAndSentMsg(msg *model.ChatMsg, channelOwner model.User) bool {
+	if !vkplay.IsBotHaveModeratorRights(channelOwner.Channel) {
+		s.SendMessageToChannel("Для использования этой команды боту необходимы права модератора (для отправки личных сообщений)", msg.GetChannelId(s.userRepo.GetUserIdByWs), msg.GetUser())
+		return false
+	}
+	return true
+}
+
+func (s *ChatService) getCommandAndPayloadForAlias(alias, channel string) (cmd, param string) {
+	if chnl, ok := s.vkplService.ChannelsCommands.Channels[channel]; ok {
+		cmd = chnl.Aliases[alias].Command
+		if chnl.Aliases[alias].Payload != "" {
+			param = chnl.Aliases[alias].Payload
+		}
+	}
+	return
+}
+
+func (s *ChatService) hasAccess(alias string, msg *model.ChatMsg) bool {
+	accessLevel := s.vkplService.ChannelsCommands.Channels[msg.GetChannelId(s.userRepo.GetUserIdByWs)].Aliases[alias].AccessLevel
+	switch accessLevel {
+	case 1:
+		return msg.GetUser().IsChatModerator || msg.GetUser().IsChannelModerator || msg.GetUser().IsOwner
+	case 2:
+		return msg.GetUser().IsOwner
+	default:
+		return true
+	}
+}
+
+func (s *ChatService) checkWsConns() {
 	time.Sleep(10 * time.Second)
-	log.Info("How many ws not connected:", len(wsConIds))
+	log.Info("How many ws not connected:", len(s.wsConIds))
 	log.Info("Channels:")
-	for _, v := range wsConIds {
+	for _, v := range s.wsConIds {
 		log.Info(v)
 	}
 
@@ -548,7 +615,7 @@ func checkWsConns() {
 	//checkWsPresence()
 }
 
-func checkWsPresence() {
+/* func checkWsPresence() {
 	//channels := vkplay.GetWsChannelsFromDB().ChannelsAutoJoin
 	vkplWs.wsCounter++
 	//p := fmt.Sprintf(`{"method": "presence", "params": {"channel":"channel-chat:%s"}}`, "18591758")
@@ -559,4 +626,4 @@ func checkWsPresence() {
 		log.Error("Error while sending ws message:", err)
 		return
 	}
-}
+} */

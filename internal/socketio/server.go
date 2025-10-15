@@ -10,8 +10,6 @@ import (
 	"github.com/zishang520/socket.io/v2/socket"
 )
 
-var io *socket.Server
-
 type SocketEvent string
 
 const (
@@ -26,7 +24,16 @@ const (
 	VotingDelete                      = "VotingDelete"
 )
 
-func Start() {
+type SocketServer struct {
+	io *socket.Server
+}
+
+func NewSocketServer() *SocketServer {
+	s := &SocketServer{}
+	return s
+}
+
+func (s *SocketServer) Start() {
 	httpServer := types.NewWebServer(nil)
 
 	serverOptions := socket.DefaultServerOptions()
@@ -38,9 +45,9 @@ func Start() {
 	}
 
 	serverOptions.SetCors(cors)
-	io = socket.NewServer(httpServer, serverOptions)
+	s.io = socket.NewServer(httpServer, serverOptions)
 
-	io.Use(func(s *socket.Socket, next func(*socket.ExtendedError)) {
+	s.io.Use(func(s *socket.Socket, next func(*socket.ExtendedError)) {
 		auth := s.Handshake().Auth
 		if auth == nil {
 			next(socket.NewExtendedError("Unauthorized: auth not found", "401"))
@@ -61,25 +68,6 @@ func Start() {
 		next(nil)
 	})
 
-	/*	io.On("connection", func(clients ...any) {
-		client := clients[0].(*socket.Socket)
-
-		client.On("event", func(datas ...any) {
-			fmt.Printf("event %v\n", datas)
-		})
-		client.On("testEmit", func(datas ...any) {
-			fmt.Printf("testEmit %v\n", datas)
-			rm := client.Rooms().Keys()[0]
-			fmt.Printf("RoomSSSS: %v\n", client.Rooms())
-			fmt.Printf("Room: %v\n", rm)
-			var scks = io.Sockets().Adapter().Sockets(types.NewSet(rm)).Len()
-			fmt.Printf("scks: %v\n", scks)
-
-		})
-		client.On("disconnect", func(...any) {
-			fmt.Printf("disconnect %v\n", client.Id())
-		})
-	})*/
 	fmt.Println(" ┌───────────────────────────────────────────────────┐ ")
 	fmt.Print(" │       Socket.IO Server running on port: " + os.Getenv("WS_PORT") + "      │ ")
 	httpServer.Listen(":"+os.Getenv("WS_PORT"), nil)
@@ -93,8 +81,8 @@ func getParam(mapData any, paramName string) (string, error) {
 	return paramString, nil
 }
 
-func Emit(room string, event SocketEvent, data any) {
-	err := io.In(socket.Room(room)).Emit(string(event), data)
+func (s *SocketServer) Emit(room string, event SocketEvent, data any) {
+	err := s.io.In(socket.Room(room)).Emit(string(event), data)
 	if err != nil {
 		log.Error("Error while emitting event:", err)
 		return

@@ -1,12 +1,5 @@
 package vkplay
 
-type AuthResponse struct {
-	ClientID     string `json:"clientId"`
-	AccessToken  string `json:"accessToken"`
-	RefreshToken string `json:"refreshToken"`
-	ExpiresAt    int64  `json:"expiresAt"`
-}
-
 type AuthRefreshTokenResponse struct {
 	AccessToken  string `json:"access_token"`
 	RefreshToken string `json:"refresh_token"`
@@ -14,28 +7,6 @@ type AuthRefreshTokenResponse struct {
 }
 
 //-----------
-
-type Config struct {
-	Id               string   `bson:"_id"`
-	ChannelsAutoJoin []string `bson:"channelsAutoJoin"`
-}
-
-// for store commands
-type ChannelCommands struct {
-	Channels map[string]ChCommand `bson:"channels"`
-}
-
-type ChCommand struct {
-	Aliases map[string]CmdDetails `bson:"aliases"`
-}
-
-type CmdDetails struct {
-	Command     string `bson:"command"`
-	AccessLevel int    `bson:"access_level"`
-	Payload     string `bson:"payload"`
-}
-
-// -----------
 
 type ChatUserDetails struct {
 	Data struct {

@@ -21,7 +21,7 @@ func FixWsIdForAllUsers() {
 
 	// get all users
 	var users []model.User
-	cur, err := mongo.GetCollection(mongo.Users).Find(ctx, bson.M{})
+	cur, err := mongodb.GetCollection(mongodb.Users).Find(ctx, bson.M{})
 	if err != nil {
 		log.Error("fixWsIdForAllUsers: get users", err)
 		return
@@ -83,7 +83,7 @@ func GenerateNewWsConnectConfig() {
 
 	// get all users
 	var users []model.User
-	cur, err := mongo.GetCollection(mongo.Users).Find(ctx, bson.M{})
+	cur, err := mongodb.GetCollection(mongodb.Users).Find(ctx, bson.M{})
 	if err != nil {
 		log.Error("GenerateNewWsConnectConfig: get users", err)
 		return

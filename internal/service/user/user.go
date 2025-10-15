@@ -2,51 +2,81 @@ package user
 
 import (
 	"HoBot_Backend/internal/model"
-	DB "HoBot_Backend/internal/mongo"
+	repoSongRequests "HoBot_Backend/internal/repository/songrequests"
+	repoSongRequestsHistory "HoBot_Backend/internal/repository/songrequestshistory"
+	repoToken "HoBot_Backend/internal/repository/token"
+	repoUser "HoBot_Backend/internal/repository/user"
+	repoUserSettings "HoBot_Backend/internal/repository/usersettings"
 	"HoBot_Backend/internal/service/chat"
-	settingsService "HoBot_Backend/internal/service/settings"
+	"HoBot_Backend/internal/service/settings"
 	tokenService "HoBot_Backend/internal/service/token"
 	"HoBot_Backend/internal/service/vkplay"
 	"context"
-	"errors"
 	"strconv"
 	"strings"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/log"
-	"go.mongodb.org/mongo-driver/v2/bson"
-	"go.mongodb.org/mongo-driver/v2/mongo"
 )
 
-func GetCurrentUser(ctx context.Context, id string) (model.User, error) {
-	var user model.User
-	err := DB.GetCollection(DB.Users).FindOne(ctx, bson.M{"_id": id}).Decode(&user)
-	return user, err
+type UserService struct {
+	ctxApp                  context.Context
+	userRepo                repoUser.Repository
+	userSettingsRepo        repoUserSettings.Repository
+	songRequestsRepo        repoSongRequests.Repository
+	songRequestsHistoryRepo repoSongRequestsHistory.Repository
+	tokenRepo               repoToken.Repository
+	vkplService             *vkplay.VkplService
+	settingsService         *settings.SettingsService
+	chatService             *chat.ChatService
 }
 
-func Logout(ctx context.Context, refreshToken string) error {
-	return tokenService.RemoveToken(ctx, refreshToken)
+func NewUserService(
+	ctx context.Context,
+	userRepo repoUser.Repository,
+	userSettingsRepo repoUserSettings.Repository,
+	songRequestsRepo repoSongRequests.Repository,
+	songRequestsHistoryRepo repoSongRequestsHistory.Repository,
+	tokenRepo repoToken.Repository,
+	vkplService *vkplay.VkplService,
+	settingsService *settings.SettingsService,
+	chatService *chat.ChatService,
+) *UserService {
+	return &UserService{
+		ctxApp:                  ctx,
+		userRepo:                userRepo,
+		userSettingsRepo:        userSettingsRepo,
+		songRequestsRepo:        songRequestsRepo,
+		songRequestsHistoryRepo: songRequestsHistoryRepo,
+		tokenRepo:               tokenRepo,
+		vkplService:             vkplService,
+		settingsService:         settingsService,
+		chatService:             chatService,
+	}
 }
 
-func RefreshToken(ctx context.Context, refreshToken string) (string, string, error) {
+func (s *UserService) Logout(ctx context.Context, refreshToken string) error {
+	return s.tokenRepo.RemoveToken(ctx, refreshToken)
+}
+
+func (s *UserService) RefreshToken(ctx context.Context, refreshToken string) (string, string, error) {
 	userFromToken, err := tokenService.ValidateRefreshToken(refreshToken)
 	if err != nil {
 		return "", "", err
 	}
 
-	token, err := tokenService.FindToken(ctx, refreshToken)
+	token, err := s.tokenRepo.FindToken(ctx, refreshToken)
 	if err != nil || token == nil {
 		return "", "", fiber.NewError(fiber.StatusUnauthorized)
 	}
 
-	var userDb model.User
-	err = DB.GetCollection(DB.Users).FindOne(ctx, bson.M{"_id": userFromToken.Id}).Decode(&userDb)
+	userDb, err := s.userRepo.GetUser(ctx, userFromToken.Id)
 	if err != nil {
 		return "", "", err
 	}
 
 	accessToken, refreshToken := tokenService.GenerateTokens(userDb.Id)
-	err = tokenService.SaveToken(ctx, userDb.Id, refreshToken)
+	err = s.tokenRepo.SaveToken(ctx, userDb.Id, refreshToken)
 	if err != nil {
 		return "", "", err
 	}
@@ -54,13 +84,8 @@ func RefreshToken(ctx context.Context, refreshToken string) (string, string, err
 	return accessToken, refreshToken, err
 }
 
-func isUserAlreadyExist(ctx context.Context, id string) bool {
-	candidate := DB.GetCollection(DB.Users).FindOne(ctx, bson.M{"_id": id})
-	return errors.Is(candidate.Err(), mongo.ErrNoDocuments)
-}
-
-func LoginVkpl(ctx context.Context, currentUser model.CurrentUserVkpl) (string, error) {
-	isNewUser := isUserAlreadyExist(ctx, strconv.Itoa(currentUser.Data.User.ID))
+func (s *UserService) LoginVkpl(ctx context.Context, currentUser model.CurrentUserVkpl) (string, error) {
+	isNewUser := s.userRepo.IsUserAlreadyExist(ctx, strconv.Itoa(currentUser.Data.User.ID))
 	channelInfo, err := vkplay.GetChannelInfo(currentUser.Data.Channel.Url)
 	if err != nil {
 		return "", err
@@ -76,26 +101,26 @@ func LoginVkpl(ctx context.Context, currentUser model.CurrentUserVkpl) (string, 
 		AvatarURL: currentUser.Data.User.AvatarURL + "&croped=1&mh=80&mw=80",
 	}
 
-	err = vkplay.InsertOrUpdateUser(ctx, user)
+	err = s.userRepo.InsertOrUpdateUser(ctx, user)
 	if err != nil {
 		log.Error(err)
 		return "", err
 	}
 
 	if isNewUser {
-		err := vkplay.FollowUnfollowChannel(user.Channel, true)
+		err := vkplay.FollowUnfollowChannel(user.Channel, true, s.vkplService.GetVkplToken())
 		if err != nil {
 			log.Error(err)
 			return "", err
 		}
 
-		err = chat.AddUserToWs(user)
+		err = s.chatService.AddUserToWs(user)
 		if err != nil {
 			log.Error(err)
 			return "", err
 		}
 
-		err = settingsService.AddDefaultSettingsForUser(ctx, user)
+		err = s.settingsService.AddDefaultSettingsForUser(ctx, user)
 		if err != nil {
 			log.Error(err)
 			return "", err
@@ -103,7 +128,7 @@ func LoginVkpl(ctx context.Context, currentUser model.CurrentUserVkpl) (string, 
 	}
 
 	refreshToken := tokenService.GenerateRefreshToken(user.Id)
-	err = tokenService.SaveToken(ctx, user.Id, refreshToken)
+	err = s.tokenRepo.SaveToken(ctx, user.Id, refreshToken)
 	if err != nil {
 		return "", err
 	}
@@ -111,40 +136,45 @@ func LoginVkpl(ctx context.Context, currentUser model.CurrentUserVkpl) (string, 
 	return refreshToken, nil
 }
 
-func WipeUser(ctx context.Context, id string) error {
-	var user model.User
-	err := DB.GetCollection(DB.Users).FindOneAndDelete(ctx, bson.M{"_id": id}).Decode(&user)
+func (s *UserService) WipeUser(ctx context.Context, id string) error {
+	user, err := s.userRepo.GetAndDeleteUser(ctx, id)
 	if err != nil {
 		log.Error("Error while wiping user [Users]:", err)
 		return err
 	}
 
-	_, err = DB.GetCollection(DB.UserSettings).DeleteOne(ctx, bson.M{"_id": id})
+	err = s.userSettingsRepo.DeleteUserSettings(ctx, id)
 	if err != nil {
 		log.Error("Error while wiping user [UserSettings]:", err)
 		return err
 	}
 
-	_, err = DB.GetCollection(DB.SongRequests).DeleteMany(ctx, bson.M{"channel_id": id})
+	err = s.songRequestsRepo.DeleteAllSongRequests(ctx, id)
 	if err != nil {
 		log.Error("Error while wiping user [SongRequests]:", err)
 		return err
 	}
 
-	err = chat.RemoveUserFromWs(user)
+	err = s.songRequestsHistoryRepo.DeleteAllSongRequestsHistory(ctx, id)
+	if err != nil {
+		log.Error("Error while wiping user [SongRequestsHistory]:", err)
+		return err
+	}
+
+	err = s.chatService.RemoveUserFromWs(user)
 	if err != nil {
 		log.Error("Error while wiping user [WS]:", err)
 		return err
 	}
 
-	err = vkplay.FollowUnfollowChannel(user.Channel, false)
+	err = vkplay.FollowUnfollowChannel(user.Channel, false, s.vkplService.GetVkplToken())
 	if err != nil {
 		log.Error("Error while unfollowing channel:", err)
 		return err
 	}
 
-	delete(vkplay.ChannelsCommands.Channels, id)
-	delete(settingsService.UsersSettings, id)
+	delete(s.vkplService.ChannelsCommands.Channels, id)
+	delete(s.settingsService.UsersSettings, id)
 
 	return nil
 }

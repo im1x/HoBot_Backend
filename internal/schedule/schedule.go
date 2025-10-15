@@ -8,7 +8,7 @@ import (
 	"github.com/gofiber/fiber/v2/log"
 )
 
-func Start() {
+func Start(lasqaService *chat.LasqaService) {
 	s, err := gocron.NewScheduler()
 	if err != nil {
 		log.Error("Error while creating scheduler:", err)
@@ -16,7 +16,7 @@ func Start() {
 
 	_, err = s.NewJob(
 		gocron.DurationJob(30*time.Second),
-		gocron.NewTask(chat.CheckDonationAlertsStatus),
+		gocron.NewTask(lasqaService.CheckDonationAlertsStatus),
 	)
 	if err != nil {
 		log.Error("Error while creating job:", err)

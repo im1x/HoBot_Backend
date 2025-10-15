@@ -7,7 +7,15 @@ import (
 	"github.com/gofiber/fiber/v2/log"
 )
 
-func StartVoting(c *fiber.Ctx) error {
+type VotingHandler struct {
+	votingService *voting.VotingService
+}
+
+func NewVotingHandler(votingService *voting.VotingService) *VotingHandler {
+	return &VotingHandler{votingService: votingService}
+}
+
+func (s *VotingHandler) StartVoting(c *fiber.Ctx) error {
 	userId := parseUserIdFromRequest(c)
 
 	var votingRequest voting.VotingRequest
@@ -17,19 +25,19 @@ func StartVoting(c *fiber.Ctx) error {
 		return fiber.NewError(fiber.StatusBadRequest, err.Error())
 	}
 
-	voting.StartVoting(userId, votingRequest)
+	s.votingService.StartVoting(userId, votingRequest)
 
 	return nil
 }
 
-func GetVotingState(c *fiber.Ctx) error {
+func (s *VotingHandler) GetVotingState(c *fiber.Ctx) error {
 	userId := parseUserIdFromRequest(c)
-	result := voting.GetVotingStatus(userId)
+	result := s.votingService.GetVotingStatus(userId)
 	return c.JSON(result)
 }
 
-func StopVoting(c *fiber.Ctx) error {
+func (s *VotingHandler) StopVoting(c *fiber.Ctx) error {
 	userId := parseUserIdFromRequest(c)
-	voting.StopVoting(userId)
+	s.votingService.StopVoting(userId)
 	return nil
 }

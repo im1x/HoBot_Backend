@@ -1,22 +1,32 @@
 package voting
 
 import (
+	repoStatistics "HoBot_Backend/internal/repository/statistics"
 	"HoBot_Backend/internal/socketio"
-	"HoBot_Backend/internal/statistics"
 	"HoBot_Backend/internal/task"
 	"HoBot_Backend/internal/utility"
+	"context"
 	"strconv"
 	"time"
 
 	"github.com/gofiber/fiber/v2/log"
 )
 
-var Voting = make(map[string]*VotingData)
+type VotingService struct {
+	appCtx         context.Context
+	Voting         map[string]*VotingData
+	statisticsRepo repoStatistics.Repository
+	socketioServer *socketio.SocketServer
+}
 
-func StartVoting(userId string, votingRequest VotingRequest) {
-	if Voting[userId] != nil && Voting[userId].StopFunc != nil {
-		Voting[userId].StopFunc()
-		delete(Voting, userId)
+func NewVotingService(appCtx context.Context, statisticsRepo repoStatistics.Repository, socketioServer *socketio.SocketServer) *VotingService {
+	return &VotingService{appCtx: appCtx, Voting: make(map[string]*VotingData), statisticsRepo: statisticsRepo, socketioServer: socketioServer}
+}
+
+func (s *VotingService) StartVoting(userId string, votingRequest VotingRequest) {
+	if s.Voting[userId] != nil && s.Voting[userId].StopFunc != nil {
+		s.Voting[userId].StopFunc()
+		delete(s.Voting, userId)
 	}
 
 	votingAnswers := make(map[string]int)
@@ -32,24 +42,24 @@ func StartVoting(userId string, votingRequest VotingRequest) {
 				Count: 0,
 			}
 		}
-		statistics.IncField(userId, statistics.Voting)
+		s.statisticsRepo.IncField(s.appCtx, userId, repoStatistics.Voting)
 	} else {
 		for i := 1; i <= 10; i++ {
 			key := strconv.Itoa(i)
 			votingAnswers[key] = i
 		}
-		statistics.IncField(userId, statistics.Rating)
+		s.statisticsRepo.IncField(s.appCtx, userId, repoStatistics.Rating)
 	}
 
-	if Voting[userId] != nil {
-		StopVoting(userId)
+	if s.Voting[userId] != nil {
+		s.StopVoting(userId)
 	}
 
 	stopFunc := task.CallAfterDuration(time.Minute*time.Duration(votingRequest.Duration), func() {
-		StopVoting(userId)
+		s.StopVoting(userId)
 	})
 
-	Voting[userId] = &VotingData{
+	s.Voting[userId] = &VotingData{
 		Type:               votingRequest.Type,
 		Title:              votingRequest.Title,
 		IsVotingInProgress: true,
@@ -62,38 +72,38 @@ func StartVoting(userId string, votingRequest VotingRequest) {
 		StopFunc:           stopFunc,
 	}
 
-	socketio.Emit(userId, socketio.VotingStart, Voting[userId].ToResponse())
+	s.socketioServer.Emit(userId, socketio.VotingStart, s.Voting[userId].ToResponse())
 }
 
-func GetVotingStatus(userId string) VotingResponse {
-	if Voting[userId] == nil {
+func (s *VotingService) GetVotingStatus(userId string) VotingResponse {
+	if s.Voting[userId] == nil {
 		return VotingResponse{}
 	}
-	return Voting[userId].ToResponse()
+	return s.Voting[userId].ToResponse()
 }
 
-func StopVoting(userId string) {
-	if Voting[userId] == nil {
+func (s *VotingService) StopVoting(userId string) {
+	if s.Voting[userId] == nil {
 		return
 	}
-	Voting[userId].IsVotingInProgress = false
+	s.Voting[userId].IsVotingInProgress = false
 
-	if Voting[userId].StopFunc != nil {
-		Voting[userId].StopFunc()
+	if s.Voting[userId].StopFunc != nil {
+		s.Voting[userId].StopFunc()
 	}
-	Voting[userId].StopFunc = task.CallAfterDuration(time.Minute*10, func() {
-		delete(Voting, userId)
-		socketio.Emit(userId, socketio.VotingDelete, "")
+	s.Voting[userId].StopFunc = task.CallAfterDuration(time.Minute*10, func() {
+		delete(s.Voting, userId)
+		s.socketioServer.Emit(userId, socketio.VotingDelete, "")
 	})
 
-	log.Infof("Voting stopped: %+v ", Voting[userId].ToResponse())
+	log.Infof("Voting stopped: %+v ", s.Voting[userId].ToResponse())
 
-	socketio.Emit(userId, socketio.VotingStop, Voting[userId].ToResponse())
+	s.socketioServer.Emit(userId, socketio.VotingStop, s.Voting[userId].ToResponse())
 
 	// TEMP
-	if Voting[userId].Type == 1 {
+	if s.Voting[userId].Type == 1 {
 		go func() {
-			ratings := Voting[userId].AllRatings
+			ratings := s.Voting[userId].AllRatings
 			log.Info("-----------------RATING-----------------")
 			log.Infof("Arithmetic Mean: %.2f\n", utility.Mean(ratings))
 			log.Infof("Median: %.2f\n", utility.Median(ratings))

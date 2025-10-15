@@ -1,14 +1,22 @@
 package handler
 
 import (
-	commonService "HoBot_Backend/internal/service/common"
+	"HoBot_Backend/internal/service/common"
 	"HoBot_Backend/internal/telegram"
 	"os"
 
 	"github.com/gofiber/fiber/v2"
 )
 
-func Feedback(c *fiber.Ctx) error {
+type CommonHandler struct {
+	commonService common.CommonService
+}
+
+func NewCommonHandler(commonService common.CommonService) *CommonHandler {
+	return &CommonHandler{commonService: commonService}
+}
+
+func (s *CommonHandler) Feedback(c *fiber.Ctx) error {
 	requestBody := c.Body()
 	feedbackText := string(requestBody)
 
@@ -20,7 +28,7 @@ func Feedback(c *fiber.Ctx) error {
 
 	telegram.SendMessage(userId + ": " + feedbackText)
 
-	err := commonService.AddFeedback(c.Context(), userId, feedbackText)
+	err := s.commonService.AddFeedback(c.Context(), userId, feedbackText)
 	if err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(err.Error())
 	}
@@ -28,7 +36,7 @@ func Feedback(c *fiber.Ctx) error {
 	return nil
 }
 
-func TerminateApp(c *fiber.Ctx) error {
+func (s *CommonHandler) TerminateApp(c *fiber.Ctx) error {
 	id := c.Params("id")
 	if id == "" {
 		return c.SendStatus(fiber.StatusBadRequest)

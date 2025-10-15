@@ -2,72 +2,107 @@ package chat
 
 import (
 	"HoBot_Backend/internal/model"
-	DB "HoBot_Backend/internal/mongo"
 	"HoBot_Backend/internal/service/settings"
 	"HoBot_Backend/internal/service/songRequest"
 	"HoBot_Backend/internal/service/youtube"
 	"HoBot_Backend/internal/socketio"
-	"HoBot_Backend/internal/statistics"
 	"context"
 	"strconv"
 	"strings"
 
-	"go.mongodb.org/mongo-driver/v2/bson"
-
 	"fmt"
 	"time"
+
+	repoSongRequests "HoBot_Backend/internal/repository/songrequests"
+	repoStatistics "HoBot_Backend/internal/repository/statistics"
+	repoUser "HoBot_Backend/internal/repository/user"
+	repoUserSettings "HoBot_Backend/internal/repository/usersettings"
 
 	"github.com/gofiber/fiber/v2/log"
 )
 
 type Command struct {
 	Name    string
-	Handler func(msg *ChatMsg, param string)
+	Handler func(msg *model.ChatMsg, param string)
 }
 
-var Commands = make(map[string]Command)
+//var Commands = make(map[string]Command)
 
-func init() {
-	addCommand("Greating_To_User", helloCommand)
-	addCommand("SR_SongRequest", srAdd)
-	addCommand("SR_SetVolume", srSetVolume)
-	addCommand("SR_SkipSong", srSkip)
-	addCommand("SR_DeleteSong", srDeleteSongRequest)
-	addCommand("SR_PlayPause", srPlayPause)
-	addCommand("SR_CurrentSong", srCurrentSong)
-	addCommand("SR_MySong", srMySong)
-	addCommand("SR_UsersSkipSongYes", srUsersSkipSongYes)
-	addCommand("SR_UsersSkipSongNo", srUsersSkipSongNo)
-	addCommand("Print_Text", printText)
-	addCommand("Available_Commands", availableCommands)
+type CommandService struct {
+	appCtx             context.Context
+	Commands           map[string]Command
+	userRepo           repoUser.Repository
+	songRequestRepo    repoSongRequests.Repository
+	statisticsRepo     repoStatistics.Repository
+	userSettingsRepo   repoUserSettings.Repository
+	settingsService    *settings.SettingsService
+	songRequestService *songRequest.SongRequestService
+	socketioServer     *socketio.SocketServer
+	chatService        *ChatService
+	lasqaService       *LasqaService
+}
+
+func NewCommandService(appCtx context.Context, userRepo repoUser.Repository, songRequestRepo repoSongRequests.Repository, statisticsRepo repoStatistics.Repository, userSettingsRepo repoUserSettings.Repository, settingsService *settings.SettingsService, songRequestService *songRequest.SongRequestService, socketioServer *socketio.SocketServer, chatService *ChatService, lasqaService *LasqaService) *CommandService {
+
+	commandService := &CommandService{
+		appCtx:             appCtx,
+		Commands:           make(map[string]Command),
+		userRepo:           userRepo,
+		songRequestRepo:    songRequestRepo,
+		statisticsRepo:     statisticsRepo,
+		userSettingsRepo:   userSettingsRepo,
+		settingsService:    settingsService,
+		songRequestService: songRequestService,
+		socketioServer:     socketioServer,
+		chatService:        chatService,
+		lasqaService:       lasqaService,
+	}
+
+	commandService.init()
+	return commandService
+}
+
+func (s *CommandService) init() {
+	s.addCommand("Greating_To_User", s.helloCommand)
+	s.addCommand("SR_SongRequest", s.srAdd)
+	s.addCommand("SR_SetVolume", s.srSetVolume)
+	s.addCommand("SR_SkipSong", s.srSkip)
+	s.addCommand("SR_DeleteSong", s.srDeleteSongRequest)
+	s.addCommand("SR_PlayPause", s.srPlayPause)
+	s.addCommand("SR_CurrentSong", s.srCurrentSong)
+	s.addCommand("SR_MySong", s.srMySong)
+	s.addCommand("SR_UsersSkipSongYes", s.srUsersSkipSongYes)
+	s.addCommand("SR_UsersSkipSongNo", s.srUsersSkipSongNo)
+	s.addCommand("Print_Text", s.printText)
+	s.addCommand("Available_Commands", s.availableCommands)
 	// Lasqa
-	addCommand("Lasqa_KP", lasqaKp)
+	s.addCommand("Lasqa_KP", s.lasqaService.LasqaKp)
 }
 
-func addCommand(name string, handler func(msg *ChatMsg, param string)) {
-	Commands[name] = Command{
+func (s *CommandService) addCommand(name string, handler func(msg *model.ChatMsg, param string)) {
+	s.Commands[name] = Command{
 		Name:    name,
 		Handler: handler,
 	}
 }
 
-func helloCommand(msg *ChatMsg, param string) {
+func (s *CommandService) helloCommand(msg *model.ChatMsg, param string) {
 	txt := fmt.Sprintf("Hello, %s! https://live.vkvideo.ru/hobot asdf https://google.com https://www.youtube.com/", msg.GetDisplayName())
-	//SendMessageToChannel(txt, msg.GetChannelId(), msg.GetUser())
+	//SendMessageToChannel(txt, msg.GetChannelId(s.userRepo.GetUserIdByWs), msg.GetUser())
 
 	paramInt, _ := strconv.Atoi(param)
-	SendWhisperToUser(txt, msg.GetChannelId(), msg.GetUser())
+	s.chatService.SendWhisperToUser(txt, msg.GetChannelId(s.userRepo.GetUserIdByWs), msg.GetUser())
 	time.Sleep(time.Duration(paramInt) * time.Millisecond)
-	SendWhisperToUser(txt, msg.GetChannelId(), msg.GetUser())
+	s.chatService.SendWhisperToUser(txt, msg.GetChannelId(s.userRepo.GetUserIdByWs), msg.GetUser())
 }
 
-func srAdd(msg *ChatMsg, param string) {
+func (s *CommandService) srAdd(msg *model.ChatMsg, param string) {
 	if param == "" {
 		return
 	}
 
-	if songRequest.IsPlaylistFull(msg.GetChannelId()) {
-		SendMessageToChannel("Очередь заполнена", msg.GetChannelId(), msg.GetUser())
+	if s.songRequestRepo.IsPlaylistFull(s.appCtx, msg.GetChannelId(s.userRepo.GetUserIdByWs)) {
+		s.chatService.SendMessageToChannel("Очередь заполнена", msg.GetChannelId(s.userRepo.GetUserIdByWs), msg.GetUser())
 		return
 	}
 	vId := param
@@ -84,34 +119,34 @@ func srAdd(msg *ChatMsg, param string) {
 		return
 	}
 
-	srSettings := settings.UsersSettings[msg.GetChannelId()].SongRequests
+	srSettings := s.settingsService.UsersSettings[msg.GetChannelId(s.userRepo.GetUserIdByWs)].SongRequests
 
 	if info.Views < srSettings.MinVideoViews {
-		SendWhisperToUser(fmt.Sprintf("Слишком мало просмотров у видео. От %d просмотров", srSettings.MinVideoViews), msg.GetChannelId(), msg.GetUser())
+		s.chatService.SendWhisperToUser(fmt.Sprintf("Слишком мало просмотров у видео. От %d просмотров", srSettings.MinVideoViews), msg.GetChannelId(s.userRepo.GetUserIdByWs), msg.GetUser())
 		return
 	}
 
 	if srSettings.MaxDurationMinutes > 0 && info.Duration > srSettings.MaxDurationMinutes*60 {
-		SendWhisperToUser(fmt.Sprintf("Слишком продолжительное видео. Максимальное время видео - %d минут(ы)",
-			srSettings.MaxDurationMinutes), msg.GetChannelId(), msg.GetUser())
+		s.chatService.SendWhisperToUser(fmt.Sprintf("Слишком продолжительное видео. Максимальное время видео - %d минут(ы)",
+			srSettings.MaxDurationMinutes), msg.GetChannelId(s.userRepo.GetUserIdByWs), msg.GetUser())
 		return
 	}
 
-	count, err := songRequest.CountSongsByUser(msg.GetChannelId(), msg.GetDisplayName())
+	count, err := s.songRequestRepo.CountSongsByUser(s.appCtx, msg.GetChannelId(s.userRepo.GetUserIdByWs), msg.GetDisplayName())
 	if err != nil {
 		return
 	}
 
 	if srSettings.MaxRequestsPerUser > 0 && count >= srSettings.MaxRequestsPerUser {
-		SendWhisperToUser(
+		s.chatService.SendWhisperToUser(
 			fmt.Sprintf("Ваши заказы уже в плейлисте. Не больше %d заказов от пользователя на плейлист",
-				settings.UsersSettings[msg.GetChannelId()].SongRequests.MaxRequestsPerUser),
-			msg.GetChannelId(), msg.GetUser())
+				s.settingsService.UsersSettings[msg.GetChannelId(s.userRepo.GetUserIdByWs)].SongRequests.MaxRequestsPerUser),
+			msg.GetChannelId(s.userRepo.GetUserIdByWs), msg.GetUser())
 		return
 	}
 
-	sr := songRequest.SongRequest{
-		ChannelId: msg.GetChannelId(),
+	sr := model.SongRequest{
+		ChannelId: msg.GetChannelId(s.userRepo.GetUserIdByWs),
 		By:        msg.GetDisplayName(),
 		Requested: time.Now().Format(time.RFC3339),
 		YT_ID:     vId,
@@ -122,27 +157,27 @@ func srAdd(msg *ChatMsg, param string) {
 		End:       0,
 	}
 
-	id, err := songRequest.AddSongRequestToDB(sr)
+	id, err := s.songRequestRepo.AddSongRequestToDB(s.appCtx, sr)
 	if err != nil {
 		log.Error("Error while adding song request to db:", err)
 		return
 	}
 	sr.Id = id
 
-	socketio.Emit(msg.GetChannelId(), socketio.SongRequestAdded, sr)
-	SendWhisperToUser("Реквест добавлен в очередь", msg.GetChannelId(), msg.GetUser())
-	statistics.IncField(msg.GetChannelId(), statistics.SongRequestsAdd)
+	s.socketioServer.Emit(msg.GetChannelId(s.userRepo.GetUserIdByWs), socketio.SongRequestAdded, sr)
+	s.chatService.SendWhisperToUser("Реквест добавлен в очередь", msg.GetChannelId(s.userRepo.GetUserIdByWs), msg.GetUser())
+	s.statisticsRepo.IncField(s.appCtx, msg.GetChannelId(s.userRepo.GetUserIdByWs), repoStatistics.SongRequestsAdd)
 }
 
-func srSetVolume(msg *ChatMsg, param string) {
+func (s *CommandService) srSetVolume(msg *model.ChatMsg, param string) {
 	var vol int
 	switch {
 	case param == "":
-		v, err := settings.GetVolume(context.Background(), msg.GetChannelId())
+		v, err := s.userSettingsRepo.GetVolume(s.appCtx, msg.GetChannelId(s.userRepo.GetUserIdByWs))
 		if err != nil {
 			return
 		}
-		SendWhisperToUser(fmt.Sprintf("Текущая громкость: %v%%", v), msg.GetChannelId(), msg.GetUser())
+		s.chatService.SendWhisperToUser(fmt.Sprintf("Текущая громкость: %v%%", v), msg.GetChannelId(s.userRepo.GetUserIdByWs), msg.GetUser())
 		return
 	case param[0] == '+' || param[0] == '-':
 		value := param[1:]
@@ -153,7 +188,7 @@ func srSetVolume(msg *ChatMsg, param string) {
 		if param[0] == '-' {
 			v = -v
 		}
-		vol, err = settings.ChangeVolumeBy(msg.GetChannelId(), v)
+		vol, err = s.userSettingsRepo.ChangeVolumeBy(msg.GetChannelId(s.userRepo.GetUserIdByWs), v)
 		if err != nil {
 			return
 		}
@@ -164,71 +199,71 @@ func srSetVolume(msg *ChatMsg, param string) {
 		}
 		vol = max(0, min(v, 100))
 
-		err = settings.SaveVolume(context.Background(), msg.GetChannelId(), vol)
+		err = s.userSettingsRepo.SaveVolume(s.appCtx, msg.GetChannelId(s.userRepo.GetUserIdByWs), vol)
 		if err != nil {
 			return
 		}
 	}
 
-	socketio.Emit(msg.GetChannelId(), socketio.SongRequestSetVolume, vol)
-	SendWhisperToUser(fmt.Sprintf("Громкость реквестов установлена на %v%%", vol), msg.GetChannelId(), msg.GetUser())
+	s.socketioServer.Emit(msg.GetChannelId(s.userRepo.GetUserIdByWs), socketio.SongRequestSetVolume, vol)
+	s.chatService.SendWhisperToUser(fmt.Sprintf("Громкость реквестов установлена на %v%%", vol), msg.GetChannelId(s.userRepo.GetUserIdByWs), msg.GetUser())
 }
 
-func srSkip(msg *ChatMsg, param string) {
-	err := songRequest.SkipSong(msg.GetChannelId())
+func (s *CommandService) srSkip(msg *model.ChatMsg, param string) {
+	err := s.songRequestService.SkipSong(msg.GetChannelId(s.userRepo.GetUserIdByWs))
 	if err != nil {
 		return
 	}
-	socketio.Emit(msg.GetChannelId(), socketio.SongRequestSkipSong, "")
-	SendMessageToChannel(msg.GetDisplayName()+" пропустил реквест", msg.GetChannelId(), nil)
-	statistics.IncField(msg.GetChannelId(), statistics.SongRequestsSkipByCommand)
+	s.socketioServer.Emit(msg.GetChannelId(s.userRepo.GetUserIdByWs), socketio.SongRequestSkipSong, "")
+	s.chatService.SendMessageToChannel(msg.GetDisplayName()+" пропустил реквест", msg.GetChannelId(s.userRepo.GetUserIdByWs), nil)
+	s.statisticsRepo.IncField(s.appCtx, msg.GetChannelId(s.userRepo.GetUserIdByWs), repoStatistics.SongRequestsSkipByCommand)
 }
 
-func srDeleteSongRequest(msg *ChatMsg, param string) {
+func (s *CommandService) srDeleteSongRequest(msg *model.ChatMsg, param string) {
 	if param == "" {
 		return
 	}
 
-	currentSong, err := songRequest.GetCurrentSong(msg.GetChannelId())
+	currentSong, err := s.songRequestRepo.GetCurrentSong(s.appCtx, msg.GetChannelId(s.userRepo.GetUserIdByWs))
 	if err != nil {
 		return
 	}
 
 	if currentSong.YT_ID == param {
-		SendWhisperToUser("Текущую песню можно только пропустить, для этого используйте команду пропуска", msg.GetChannelId(), msg.GetUser())
+		s.chatService.SendWhisperToUser("Текущую песню можно только пропустить, для этого используйте команду пропуска", msg.GetChannelId(s.userRepo.GetUserIdByWs), msg.GetUser())
 		return
 	}
 
-	song, err := songRequest.DeleteSongByYtId(msg.GetChannelId(), param)
+	song, err := s.songRequestRepo.DeleteSongByYtId(s.appCtx, msg.GetChannelId(s.userRepo.GetUserIdByWs), param)
 	if err != nil {
 		return
 	}
 
-	socketio.Emit(msg.GetChannelId(), socketio.SongRequestDeleteSong, song.Id)
-	SendMessageToChannel(fmt.Sprintf("%s удалил песню \"%s\" от %s", msg.GetDisplayName(), song.Title, song.By), msg.GetChannelId(), nil)
+	s.socketioServer.Emit(msg.GetChannelId(s.userRepo.GetUserIdByWs), socketio.SongRequestDeleteSong, song.Id)
+	s.chatService.SendMessageToChannel(fmt.Sprintf("%s удалил песню \"%s\" от %s", msg.GetDisplayName(), song.Title, song.By), msg.GetChannelId(s.userRepo.GetUserIdByWs), nil)
 
 }
 
-func srPlayPause(msg *ChatMsg, param string) {
-	socketio.Emit(msg.GetChannelId(), socketio.SongRequestPlayPause, "")
+func (s *CommandService) srPlayPause(msg *model.ChatMsg, param string) {
+	s.socketioServer.Emit(msg.GetChannelId(s.userRepo.GetUserIdByWs), socketio.SongRequestPlayPause, "")
 }
 
-func srCurrentSong(msg *ChatMsg, param string) {
-	song, err := songRequest.GetCurrentSong(msg.GetChannelId())
+func (s *CommandService) srCurrentSong(msg *model.ChatMsg, param string) {
+	song, err := s.songRequestRepo.GetCurrentSong(s.appCtx, msg.GetChannelId(s.userRepo.GetUserIdByWs))
 	if err != nil {
 		return
 	}
 
 	if song.YT_ID == "" {
-		SendWhisperToUser("Сейчас ничего не играет", msg.GetChannelId(), msg.GetUser())
+		s.chatService.SendWhisperToUser("Сейчас ничего не играет", msg.GetChannelId(s.userRepo.GetUserIdByWs), msg.GetUser())
 		return
 	}
 
-	SendWhisperToUser(fmt.Sprintf("Текущая песня: %s ( https://youtu.be/%s )", song.Title, song.YT_ID), msg.GetChannelId(), msg.GetUser())
+	s.chatService.SendWhisperToUser(fmt.Sprintf("Текущая песня: %s ( https://youtu.be/%s )", song.Title, song.YT_ID), msg.GetChannelId(s.userRepo.GetUserIdByWs), msg.GetUser())
 }
 
-func srMySong(msg *ChatMsg, param string) {
-	playlist, err := songRequest.GetPlaylist(context.Background(), msg.GetChannelId())
+func (s *CommandService) srMySong(msg *model.ChatMsg, param string) {
+	playlist, err := s.songRequestRepo.GetPlaylist(s.appCtx, msg.GetChannelId(s.userRepo.GetUserIdByWs))
 	if err != nil {
 		return
 	}
@@ -238,85 +273,81 @@ func srMySong(msg *ChatMsg, param string) {
 		if song.By == msg.GetDisplayName() {
 			t := time.Duration(timeToMySong) * time.Second
 			if i == 0 {
-				SendWhisperToUser("Твоя песня играет прямо сейчас!", msg.GetChannelId(), msg.GetUser())
+				s.chatService.SendWhisperToUser("Твоя песня играет прямо сейчас!", msg.GetChannelId(s.userRepo.GetUserIdByWs), msg.GetUser())
 				break
 			}
-			SendWhisperToUser(fmt.Sprintf("До твоей песни %v (~%s)", i, fmtDuration(t)), msg.GetChannelId(), msg.GetUser())
+			s.chatService.SendWhisperToUser(fmt.Sprintf("До твоей песни %v (~%s)", i, fmtDuration(t)), msg.GetChannelId(s.userRepo.GetUserIdByWs), msg.GetUser())
 			break
 		}
 		timeToMySong += song.Length
 	}
 }
 
-func srUsersSkipSongYes(msg *ChatMsg, param string) {
+func (s *CommandService) srUsersSkipSongYes(msg *model.ChatMsg, param string) {
 	log.Info("Triggered skip song by " + msg.GetDisplayName())
-	if !settings.UsersSettings[msg.GetChannelId()].SongRequests.IsUsersSkipAllowed {
+	if !s.settingsService.UsersSettings[msg.GetChannelId(s.userRepo.GetUserIdByWs)].SongRequests.IsUsersSkipAllowed {
 		return
 	}
 
-	if songRequest.VotesForSkip[msg.GetChannelId()] != nil {
-		if !songRequest.VotesForSkip[msg.GetChannelId()].HasVoted(msg.GetUser().ID) {
-			log.Infof("%s voted SKIP.(%d/%d)\n", msg.GetDisplayName(), songRequest.VotesForSkip[msg.GetChannelId()].GetCount()+1, settings.UsersSettings[msg.GetChannelId()].SongRequests.UsersSkipValue)
+	if s.songRequestService.VotesForSkip[msg.GetChannelId(s.userRepo.GetUserIdByWs)] != nil {
+		if !s.songRequestService.VotesForSkip[msg.GetChannelId(s.userRepo.GetUserIdByWs)].HasVoted(msg.GetUser().ID) {
+			log.Infof("%s voted SKIP.(%d/%d)\n", msg.GetDisplayName(), s.songRequestService.VotesForSkip[msg.GetChannelId(s.userRepo.GetUserIdByWs)].GetCount()+1, s.settingsService.UsersSettings[msg.GetChannelId(s.userRepo.GetUserIdByWs)].SongRequests.UsersSkipValue)
 		} else {
 			log.Infof("%s tryed to vote AGAIN. Rejected\n", msg.GetDisplayName())
 			return
 		}
 	} else {
-		log.Infof("%s voted SKIP.(%d/%d)\n", msg.GetDisplayName(), 1, settings.UsersSettings[msg.GetChannelId()].SongRequests.UsersSkipValue)
+		log.Infof("%s voted SKIP.(%d/%d)\n", msg.GetDisplayName(), 1, s.settingsService.UsersSettings[msg.GetChannelId(s.userRepo.GetUserIdByWs)].SongRequests.UsersSkipValue)
 	}
 
-	isSkipped := songRequest.VotesForSkipYes(msg.GetChannelId(), msg.GetUser().ID)
+	isSkipped := s.songRequestService.VotesForSkipYes(msg.GetChannelId(s.userRepo.GetUserIdByWs), msg.GetUser().ID)
 
 	if isSkipped {
-		socketio.Emit(msg.GetChannelId(), socketio.SongRequestSkipSong, "")
-		SendMessageToChannel("Зрители пропустили реквест", msg.GetChannelId(), nil)
+		s.socketioServer.Emit(msg.GetChannelId(s.userRepo.GetUserIdByWs), socketio.SongRequestSkipSong, "")
+		s.chatService.SendMessageToChannel("Зрители пропустили реквест", msg.GetChannelId(s.userRepo.GetUserIdByWs), nil)
 		log.Info("Skipped song by users")
-		statistics.IncField(msg.GetChannelId(), statistics.SongRequestsSkipByUsers)
+		s.statisticsRepo.IncField(s.appCtx, msg.GetChannelId(s.userRepo.GetUserIdByWs), repoStatistics.SongRequestsSkipByUsers)
 		return
 	}
 
-	if songRequest.VotesForSkip[msg.GetChannelId()].GetCount() == (settings.UsersSettings[msg.GetChannelId()].SongRequests.UsersSkipValue / 2) {
-		SendMessageToChannel(fmt.Sprintf("Набрано голосов для пропуска песни: %d/%d", songRequest.VotesForSkip[msg.GetChannelId()].GetCount(), settings.UsersSettings[msg.GetChannelId()].SongRequests.UsersSkipValue), msg.GetChannelId(), nil)
+	if s.songRequestService.VotesForSkip[msg.GetChannelId(s.userRepo.GetUserIdByWs)].GetCount() == (s.settingsService.UsersSettings[msg.GetChannelId(s.userRepo.GetUserIdByWs)].SongRequests.UsersSkipValue / 2) {
+		s.chatService.SendMessageToChannel(fmt.Sprintf("Набрано голосов для пропуска песни: %d/%d", s.songRequestService.VotesForSkip[msg.GetChannelId(s.userRepo.GetUserIdByWs)].GetCount(), s.settingsService.UsersSettings[msg.GetChannelId(s.userRepo.GetUserIdByWs)].SongRequests.UsersSkipValue), msg.GetChannelId(s.userRepo.GetUserIdByWs), nil)
 	}
 }
 
-func srUsersSkipSongNo(msg *ChatMsg, param string) {
+func (s *CommandService) srUsersSkipSongNo(msg *model.ChatMsg, param string) {
 	log.Info("Triggered def song by " + msg.GetDisplayName())
-	if !settings.UsersSettings[msg.GetChannelId()].SongRequests.IsUsersSkipAllowed {
+	if !s.settingsService.UsersSettings[msg.GetChannelId(s.userRepo.GetUserIdByWs)].SongRequests.IsUsersSkipAllowed {
 		return
 	}
 
-	if songRequest.VotesForSkip[msg.GetChannelId()] != nil {
-		if !songRequest.VotesForSkip[msg.GetChannelId()].HasVoted(msg.GetUser().ID) {
-			log.Infof("%s voted DEF.(%d/%d)\n", msg.GetDisplayName(), songRequest.VotesForSkip[msg.GetChannelId()].GetCount()-1, settings.UsersSettings[msg.GetChannelId()].SongRequests.UsersSkipValue)
+	if s.songRequestService.VotesForSkip[msg.GetChannelId(s.userRepo.GetUserIdByWs)] != nil {
+		if !s.songRequestService.VotesForSkip[msg.GetChannelId(s.userRepo.GetUserIdByWs)].HasVoted(msg.GetUser().ID) {
+			log.Infof("%s voted DEF.(%d/%d)\n", msg.GetDisplayName(), s.songRequestService.VotesForSkip[msg.GetChannelId(s.userRepo.GetUserIdByWs)].GetCount()-1, s.settingsService.UsersSettings[msg.GetChannelId(s.userRepo.GetUserIdByWs)].SongRequests.UsersSkipValue)
 		}
 	} else {
-		log.Infof("%s voted DEF.(%d/%d)\n", msg.GetDisplayName(), -1, settings.UsersSettings[msg.GetChannelId()].SongRequests.UsersSkipValue)
+		log.Infof("%s voted DEF.(%d/%d)\n", msg.GetDisplayName(), -1, s.settingsService.UsersSettings[msg.GetChannelId(s.userRepo.GetUserIdByWs)].SongRequests.UsersSkipValue)
 	}
 
-	songRequest.VotesForSkipNo(msg.GetChannelId(), msg.GetUser().ID)
+	s.songRequestService.VotesForSkipNo(msg.GetChannelId(s.userRepo.GetUserIdByWs), msg.GetUser().ID)
 }
 
-func printText(msg *ChatMsg, param string) {
-	SendMessageToChannel(param, msg.GetChannelId(), msg.GetUser())
-	statistics.IncField(msg.GetChannelId(), statistics.PrintTextByCommand)
+func (s *CommandService) printText(msg *model.ChatMsg, param string) {
+	s.chatService.SendMessageToChannel(param, msg.GetChannelId(s.userRepo.GetUserIdByWs), msg.GetUser())
+	s.statisticsRepo.IncField(s.appCtx, msg.GetChannelId(s.userRepo.GetUserIdByWs), repoStatistics.PrintTextByCommand)
 }
 
-func availableCommands(msg *ChatMsg, param string) {
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
-
-	var channelOwner model.User
-	err := DB.GetCollection(DB.Users).FindOne(ctx, bson.M{"_id": msg.GetChannelId()}).Decode(&channelOwner)
+func (s *CommandService) availableCommands(msg *model.ChatMsg, param string) {
+	/*channelOwner, err := s.userRepo.GetUser(s.appCtx, msg.GetChannelId(s.userRepo.GetUserIdByWs))
 	if err != nil {
 		return
 	}
 
-	/*	if !isBotModeratorAndSentMsg(msg, channelOwner) {
+		if !isBotModeratorAndSentMsg(msg, channelOwner) {
 		return
 	}*/
 
-	commands, err := settings.GetCommandsWithDescription(ctx, msg.GetChannelId())
+	commands, err := s.settingsService.GetCommandsWithDescription(s.appCtx, msg.GetChannelId(s.userRepo.GetUserIdByWs))
 	if err != nil {
 		return
 	}
@@ -363,5 +394,5 @@ func availableCommands(msg *ChatMsg, param string) {
 		resCommands += " | Помощь по командам - https://hobot.alwaysdata.net/p/help"
 	}
 
-	SendWhisperToUser(resCommands, msg.GetChannelId(), msg.GetUser())
+	s.chatService.SendWhisperToUser(resCommands, msg.GetChannelId(s.userRepo.GetUserIdByWs), msg.GetUser())
 }
