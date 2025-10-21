@@ -7,6 +7,7 @@ import (
 type User struct {
 	Id        string `bson:"_id,omitempty" json:"id,omitempty"`
 	Nick      string `bson:"nick,omitempty" json:"nick,omitempty"`
+	UserId    string `bson:"user_id,omitempty" json:"user_id,omitempty"`
 	Channel   string `bson:"channel,omitempty" json:"channel,omitempty"`
 	ChannelWS string `bson:"channel_ws,omitempty"`
 	AvatarURL string `bson:"avatar_url,omitempty" json:"avatar_url,omitempty"`
@@ -38,9 +39,13 @@ type CurrentUserVkpl struct {
 			AvatarURL          string `json:"avatar_url"`
 			IsStreamer         bool   `json:"is_streamer"`
 			IsVerifiedStreamer bool   `json:"is_verified_streamer"`
+			LegacyID           int    `json:"legacy_id"`
 		} `json:"user"`
 		Channel struct {
 			Url string `json:"url"`
 		} `json:"channel"`
+		Channels []struct {
+			Url string `json:"url"`
+		} `json:"channels"`
 	} `json:"data"`
 }

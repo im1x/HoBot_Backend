@@ -94,8 +94,9 @@ func (s *UserService) LoginVkpl(ctx context.Context, currentUser model.CurrentUs
 	channelWs := strings.Split(channelInfo.Data.Channel.WebSocketChannels.Chat, ":")[1]
 
 	user := model.User{
-		Id:        strconv.Itoa(currentUser.Data.User.ID),
+		Id:        strconv.Itoa(channelInfo.Data.Channel.ID),
 		Nick:      currentUser.Data.User.Nick,
+		UserId:    strconv.Itoa(currentUser.Data.User.ID),
 		Channel:   currentUser.Data.Channel.Url,
 		ChannelWS: channelWs,
 		AvatarURL: currentUser.Data.User.AvatarURL + "&croped=1&mh=80&mw=80",

@@ -2,7 +2,6 @@ package handler
 
 import (
 	"HoBot_Backend/internal/model"
-	"HoBot_Backend/internal/repository/songrequests"
 	repoSongRequests "HoBot_Backend/internal/repository/songrequests"
 	repoSongRequestsHistory "HoBot_Backend/internal/repository/songrequestshistory"
 	repoStatistics "HoBot_Backend/internal/repository/statistics"
@@ -27,7 +26,7 @@ type SongRequestHandler struct {
 	chatService             *chat.ChatService
 }
 
-func NewSongRequestHandler(songrequestsRepo songrequests.Repository, userRepo repoUser.Repository, songrequestsHistoryRepo repoSongRequestsHistory.Repository, statisticsRepo repoStatistics.Repository, songrequestsService *songRequest.SongRequestService, chatService *chat.ChatService) *SongRequestHandler {
+func NewSongRequestHandler(songrequestsRepo repoSongRequests.Repository, userRepo repoUser.Repository, songrequestsHistoryRepo repoSongRequestsHistory.Repository, statisticsRepo repoStatistics.Repository, songrequestsService *songRequest.SongRequestService, chatService *chat.ChatService) *SongRequestHandler {
 	return &SongRequestHandler{
 		songrequestsRepo:        songrequestsRepo,
 		userRepo:                userRepo,
