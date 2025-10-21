@@ -85,12 +85,12 @@ func (s *UserService) RefreshToken(ctx context.Context, refreshToken string) (st
 }
 
 func (s *UserService) LoginVkpl(ctx context.Context, currentUser model.CurrentUserVkpl) (string, error) {
-	isNewUser := s.userRepo.IsUserAlreadyExist(ctx, strconv.Itoa(currentUser.Data.User.ID))
 	channelInfo, err := vkplay.GetChannelInfo(currentUser.Data.Channel.Url)
 	if err != nil {
 		return "", err
 	}
 
+	isNewUser := s.userRepo.IsUserAlreadyExist(ctx, strconv.Itoa(channelInfo.Data.Channel.ID))
 	channelWs := strings.Split(channelInfo.Data.Channel.WebSocketChannels.Chat, ":")[1]
 
 	user := model.User{
