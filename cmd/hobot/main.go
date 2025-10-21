@@ -63,10 +63,6 @@ func main() {
 	}
 	defer db.Close(ctx)
 
-	//Actions
-	//actions.ChangeIds(ctx, db)
-	//panic("Ids updated")
-
 	//Repositories
 	vkplRepo := repoVkpl.NewVkplRepository(db)
 	configRepo := repoConfig.NewConfigRepository(db)
