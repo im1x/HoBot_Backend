@@ -63,6 +63,10 @@ func main() {
 	}
 	defer db.Close(ctx)
 
+	//Actions
+	//actions.ChangeIds(ctx, db)
+	//panic("Ids updated")
+
 	//Repositories
 	vkplRepo := repoVkpl.NewVkplRepository(db)
 	configRepo := repoConfig.NewConfigRepository(db)
@@ -95,7 +99,7 @@ func main() {
 	// handlers
 	commonHandler := handler.NewCommonHandler(commonService)
 	settingHandler := handler.NewSettingHandler(validate, userSettingsRepo, settingsService)
-	songRequestHandler := handler.NewSongRequestHandler(songRequestsRepo, userRepo, songRequestsService, chatService)
+	songRequestHandler := handler.NewSongRequestHandler(songRequestsRepo, userRepo, songRequestsHistoryRepo, statisticsRepo, songRequestsService, chatService)
 	userHandler := handler.NewUserHandler(validate, userService, userRepo)
 	votingHandler := handler.NewVotingHandler(votingService)
 

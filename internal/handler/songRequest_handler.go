@@ -27,8 +27,14 @@ type SongRequestHandler struct {
 	chatService             *chat.ChatService
 }
 
-func NewSongRequestHandler(songrequestsRepo songrequests.Repository, userRepo repoUser.Repository, songrequestsService *songRequest.SongRequestService, chatService *chat.ChatService) *SongRequestHandler {
-	return &SongRequestHandler{songrequestsRepo: songrequestsRepo, userRepo: userRepo, songrequestsService: songrequestsService, chatService: chatService}
+func NewSongRequestHandler(songrequestsRepo songrequests.Repository, userRepo repoUser.Repository, songrequestsHistoryRepo repoSongRequestsHistory.Repository, statisticsRepo repoStatistics.Repository, songrequestsService *songRequest.SongRequestService, chatService *chat.ChatService) *SongRequestHandler {
+	return &SongRequestHandler{
+		songrequestsRepo:        songrequestsRepo,
+		userRepo:                userRepo,
+		songrequestsHistoryRepo: songrequestsHistoryRepo,
+		statisticsRepo:          statisticsRepo,
+		songrequestsService:     songrequestsService,
+		chatService:             chatService}
 }
 
 func (s *SongRequestHandler) PlaylistByStreamer(c *fiber.Ctx) error {
