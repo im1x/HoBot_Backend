@@ -118,12 +118,12 @@ func main() {
 	log.Fatal(app.Listen(":" + os.Getenv("PORT")))
 }
 
-func testEnvs(enums []string) bool {
+func testEnvs(envs []string) bool {
 	successful := true
-	for _, enum := range enums {
-		if _, ok := os.LookupEnv(enum); !ok {
+	for _, env := range envs {
+		if _, ok := os.LookupEnv(env); !ok {
 			successful = false
-			log.Printf("Env \"%s\" not found\n", enum)
+			log.Printf("Env \"%s\" not found\n", env)
 		}
 	}
 	return successful
