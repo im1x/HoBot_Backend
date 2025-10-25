@@ -3,6 +3,7 @@ package actions
 import (
 	"HoBot_Backend/internal/model"
 	"HoBot_Backend/internal/mongodb"
+	"HoBot_Backend/internal/service/user"
 	"HoBot_Backend/internal/service/vkplay"
 	"context"
 	"encoding/csv"
@@ -156,6 +157,38 @@ func updateUserAvatarWsNickUserId(c context.Context, db *mongodb.Client, user mo
 		log.Error("updateUser: update user", err)
 		return
 	}
+}
+
+func RemoveNotExistChannels(c context.Context, db *mongodb.Client, userService *user.UserService) {
+	ctx, cancel := context.WithTimeout(c, 2*time.Minute)
+	defer cancel()
+
+	var users []model.User
+	cur, err := db.GetCollection(mongodb.Users).Find(ctx, bson.M{"user_id": bson.M{"$exists": false}})
+	if err != nil {
+		log.Error("RemoveNotExistChannels: get users", err)
+		return
+	}
+	defer cur.Close(ctx)
+
+	err = cur.All(ctx, &users)
+	if err != nil {
+		log.Error("RemoveNotExistChannels: decode", err)
+	}
+
+	log.Info("Found users: ", len(users))
+
+	for _, user := range users {
+		log.Info("Removing user: ", user.Channel)
+		err = userService.WipeUser(ctx, user.Id)
+		if err != nil {
+			log.Error("RemoveNotExistChannels: wipe user", err)
+			continue
+		}
+		log.Info("User removed: ", user.Channel)
+	}
+
+	log.Info("Done")
 }
 
 /* func updateUser(ctx context.Context, db *mongodb.Client, id string, newId string) {
