@@ -11,4 +11,5 @@ type Repository interface {
 	IsUserAlreadyExist(ctx context.Context, id string) bool
 	GetAndDeleteUser(ctx context.Context, id string) (model.User, error)
 	GetUserIdByWs(ctx context.Context, ws string) (string, error)
+	DeleteUser(ctx context.Context, channelId string) error
 }

@@ -71,3 +71,15 @@ func (r *userRepository) GetUserIdByWs(ctx context.Context, ws string) (string, 
 	err := r.col.FindOne(ctx, bson.M{"channel_ws": ws}).Decode(&user)
 	return user.Id, err
 }
+
+func (r *userRepository) DeleteUser(ctx context.Context, channelId string) error {
+	ctx, cancel := context.WithTimeout(ctx, 3*time.Second)
+	defer cancel()
+
+	_, err := r.col.DeleteOne(ctx, bson.M{"_id": channelId})
+	if err != nil {
+		log.Error("Error while deleting user:", err)
+		return err
+	}
+	return nil
+}

@@ -138,9 +138,9 @@ func (s *UserService) LoginVkpl(ctx context.Context, currentUser model.CurrentUs
 }
 
 func (s *UserService) WipeUser(ctx context.Context, id string) error {
-	user, err := s.userRepo.GetAndDeleteUser(ctx, id)
+	user, err := s.userRepo.GetUser(ctx, id)
 	if err != nil {
-		log.Error("Error while wiping user [Users]:", err)
+		log.Error("Error while getting user [Users]:", err)
 		return err
 	}
 
@@ -177,6 +177,12 @@ func (s *UserService) WipeUser(ctx context.Context, id string) error {
 	err = s.tokenRepo.RemoveTokenByChannelId(ctx, id)
 	if err != nil {
 		log.Error("Error while deleting token by channel id:", err)
+		return err
+	}
+
+	err = s.userRepo.DeleteUser(ctx, id)
+	if err != nil {
+		log.Error("Error while deleting user:", err)
 		return err
 	}
 
