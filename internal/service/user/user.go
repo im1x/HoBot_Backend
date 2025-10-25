@@ -174,6 +174,12 @@ func (s *UserService) WipeUser(ctx context.Context, id string) error {
 		return err
 	}
 
+	err = s.tokenRepo.RemoveTokenByChannelId(ctx, id)
+	if err != nil {
+		log.Error("Error while deleting token by channel id:", err)
+		return err
+	}
+
 	delete(s.vkplService.ChannelsCommands.Channels, id)
 	delete(s.settingsService.UsersSettings, id)
 

@@ -60,6 +60,19 @@ func (r *tokenRepository) RemoveToken(ctx context.Context, refreshToken string) 
 	}
 	return nil
 }
+
+func (r *tokenRepository) RemoveTokenByChannelId(ctx context.Context, channelId string) error {
+	ctx, cancel := context.WithTimeout(ctx, 3*time.Second)
+	defer cancel()
+
+	_, err := r.col.DeleteOne(ctx, bson.M{"user_id": channelId})
+	if err != nil {
+		log.Error("Error while deleting token by channel id:", err)
+		return err
+	}
+	return nil
+}
+
 func (r *tokenRepository) FindToken(ctx context.Context, token string) (*model.Token, error) {
 	ctx, cancel := context.WithTimeout(ctx, 3*time.Second)
 	defer cancel()
