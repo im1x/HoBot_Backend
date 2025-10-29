@@ -176,13 +176,6 @@ This project is licensed under the **GNU Affero General Public License v3.0 (AGP
 
 See the [LICENSE](LICENSE) file for details.
 
-### What this means:
-
-- ✅ You can freely use, modify, and distribute this software
-- ✅ If you run a modified version on a server, you must make the source code available to users
-- ✅ Any modifications must also be licensed under AGPL-3.0
-- 📚 See https://www.gnu.org/licenses/agpl-3.0.en.html for full license details
-
 ---
 
 Made with ❤️ for VK Video Live streamers by [Im1x](https://github.com/im1x)
