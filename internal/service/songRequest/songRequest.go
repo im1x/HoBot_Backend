@@ -60,18 +60,12 @@ func (s *SongRequestService) InitUsersSkipIfNeeded(userId string) {
 }
 
 func (s *SongRequestService) VotesForSkipYes(channelId string, userId int) bool {
-	ctx, cancel := context.WithTimeout(s.ctxApp, 3*time.Second)
-	defer cancel()
-
 	s.InitUsersSkipIfNeeded(channelId)
 	s.VotesForSkip[channelId].VoteYes(userId)
 
 	if s.VotesForSkip[channelId].GetCount() >= s.settingsService.UsersSettings[channelId].SongRequests.UsersSkipValue {
-		_, err := s.songRequestsRepo.SkipSong(ctx, channelId)
-		if err != nil {
-			return false
-		}
-		return true
+		err := s.SkipSong(channelId)
+		return err == nil
 	}
 
 	return false
