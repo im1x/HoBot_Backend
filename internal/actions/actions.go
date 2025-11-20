@@ -191,6 +191,144 @@ func RemoveNotExistChannels(c context.Context, db *mongodb.Client, userService *
 	log.Info("Done")
 }
 
+// Update ids in DB
+func UpdateUserAndSettings(c context.Context, db *mongodb.Client) {
+	ctx, cancel := context.WithTimeout(c, 1*time.Hour)
+	defer cancel()
+
+	// get all users from DB
+	var users []model.User
+	cur, err := db.GetCollection(mongodb.Users).Find(ctx, bson.M{})
+	if err != nil {
+		log.Error("ChangeIds: error getting users from DB", err)
+		return
+	}
+	defer cur.Close(ctx)
+
+	err = cur.All(ctx, &users)
+	if err != nil {
+		log.Error("ChangeIds: error decoding users", err)
+		return
+	}
+
+	var usersIdUpdated, usersUpdated int
+	var usersError []model.User
+	var config model.Config
+
+	for i, u := range users {
+		user := u
+		log.Info("Processing user:  ", user.Channel)
+		channelInfo, err := vkplay.GetChannelInfo(user.Channel)
+		if err != nil {
+			log.Error("UpdateUserAvatarWsNick: error getting channel info", err)
+			usersError = append(usersError, user)
+			continue
+		}
+
+		var oldId string
+
+		if user.Id != strconv.Itoa(channelInfo.Data.Channel.ID) {
+			log.Info("Id updated: ", user.Id, " -> ", channelInfo.Data.Channel.ID)
+			oldId = user.Id
+			user.Id = strconv.Itoa(channelInfo.Data.Channel.ID)
+		}
+
+		user.AvatarURL = channelInfo.Data.Owner.AvatarURL + "&croped=1&mh=80&mw=80"
+
+		if user.Nick != channelInfo.Data.Owner.Nick {
+			log.Info("Nick updated: ", user.Nick, " -> ", channelInfo.Data.Owner.Nick)
+			user.Nick = channelInfo.Data.Owner.Nick
+		}
+
+		channelWs := strings.Split(channelInfo.Data.Channel.WebSocketChannels.Chat, ":")[1]
+		if user.ChannelWS != channelWs {
+			log.Info("WS updated: ", user.ChannelWS, " -> ", channelWs)
+			user.ChannelWS = channelWs
+		}
+		config.ChannelsAutoJoin = append(config.ChannelsAutoJoin, user.ChannelWS)
+
+		if user.UserId != strconv.Itoa(channelInfo.Data.Owner.ID) {
+			log.Info("UserId updated: ", user.UserId, " -> ", channelInfo.Data.Owner.ID)
+			user.UserId = strconv.Itoa(channelInfo.Data.Owner.ID)
+		}
+
+		if oldId == "" {
+			updateUserAvatarWsNickUserId(ctx, db, user)
+			usersUpdated++
+		} else {
+			deleteUserAndInsertNew(ctx, db, oldId, user)
+			deleteSettingsAndInsertNew(ctx, db, oldId, user.Id)
+			usersIdUpdated++
+		}
+
+		log.Info("User updated ", i+1, "\\", len(users), " --------------------")
+		time.Sleep(2 * time.Second)
+	}
+
+	err = saveWsChannels(ctx, db, config)
+	if err != nil {
+		log.Error("UpdateUserAvatarWsNick: error saving ws channels", err)
+	}
+	log.Info("Save ws channels: ", len(config.ChannelsAutoJoin))
+
+	log.Info("Update User Id: ", usersIdUpdated)
+	log.Info("Update User (without Id): ", usersUpdated)
+	log.Info("Update User error: ", len(usersError))
+	for _, user := range usersError {
+		log.Info("User error: ", user.Channel)
+	}
+}
+
+func deleteUserAndInsertNew(c context.Context, db *mongodb.Client, oldId string, user model.User) {
+	ctx, cancel := context.WithTimeout(c, 5*time.Second)
+	defer cancel()
+
+	_, err := db.GetCollection(mongodb.Users).DeleteOne(ctx, bson.M{"_id": oldId})
+	if err != nil {
+		log.Error("deleteUserAndInsertNew: delete user", err)
+		return
+	}
+
+	_, err = db.GetCollection(mongodb.Users).InsertOne(ctx, user)
+	if err != nil {
+		log.Error("deleteUserAndInsertNew: insert user", err)
+		return
+	}
+}
+
+func deleteSettingsAndInsertNew(c context.Context, db *mongodb.Client, oldId string, newId string) {
+	ctx, cancel := context.WithTimeout(c, 5*time.Second)
+	defer cancel()
+
+	var userSetting model.UserSettings
+	err := db.GetCollection(mongodb.UserSettings).FindOneAndDelete(ctx, bson.M{"_id": oldId}).Decode(&userSetting)
+	if err != nil {
+		log.Error("error deleting user setting", err)
+		return
+	}
+
+	userSetting.Id = newId
+
+	_, err = db.GetCollection(mongodb.UserSettings).InsertOne(ctx, userSetting)
+	if err != nil {
+		log.Error("deleteSettingsAndInsertNew: insert settings", err)
+		return
+	}
+}
+
+func saveWsChannels(ctx context.Context, db *mongodb.Client, config model.Config) error {
+	ctx, cancel := context.WithTimeout(ctx, 3*time.Second)
+	defer cancel()
+
+	config.Id = "ws"
+	_, err := db.GetCollection(mongodb.Config).UpdateByID(ctx, "ws", bson.M{"$set": config})
+	if err != nil {
+		log.Error("Error while saving channels:", err)
+		return err
+	}
+	return nil
+}
+
 /* func updateUser(ctx context.Context, db *mongodb.Client, id string, newId string) {
 	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
