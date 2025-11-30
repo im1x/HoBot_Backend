@@ -3,10 +3,12 @@ package chat
 import (
 	"HoBot_Backend/internal/model"
 	"HoBot_Backend/internal/utility"
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
+	"os"
 	"slices"
 	"sort"
 	"strconv"
@@ -255,6 +257,51 @@ func (s *LasqaService) CheckDonationAlertsStatus() {
 	isOnline := daResp.Data.IsOnline == 1
 
 	if changed := s.SetStatus(isOnline); changed {
-		s.chatService.SendMessageToChannel("👀 Стример зашел в DonationAlerts", "8845069", nil)
+		text := "👀 Стример зашел в DonationAlerts"
+		s.chatService.SendMessageToChannel(text, "8845069", nil)
+		sendTwitchChatMessageLasqa(text)
+	}
+}
+
+func sendTwitchChatMessageLasqa(message string) {
+	token := os.Getenv("TWITCH_TOKEN")
+	clientID := os.Getenv("TWITCH_CLIENT_ID")
+	if token == "" || clientID == "" {
+		log.Info("TWITCH_TOKEN or TWITCH_CLIENT_ID not set — aborting SendTwitchChatMessage")
+		return
+	}
+
+	helixURL := "https://api.twitch.tv/helix/chat/messages"
+	broadcasterID := "60796327"
+	senderID := "481387751"
+
+	payload := map[string]string{
+		"broadcaster_id": broadcasterID,
+		"sender_id":      senderID,
+		"message":        message,
+	}
+	bodyBytes, err := json.Marshal(payload)
+	if err != nil {
+		log.Error("twi: marshal payload: %w", err)
+	}
+
+	req, err := http.NewRequest(http.MethodPost, helixURL, bytes.NewReader(bodyBytes))
+	if err != nil {
+		log.Error("twi: create request: %w", err)
+	}
+	req.Header.Set("Authorization", "Bearer "+token)
+	req.Header.Set("Client-Id", clientID)
+	req.Header.Set("Content-Type", "application/json")
+
+	client := &http.Client{Timeout: 10 * time.Second}
+	resp, err := client.Do(req)
+	if err != nil {
+		log.Error("twi: request failed: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		respBody, _ := io.ReadAll(resp.Body)
+		log.Error("twi: non-2xx response: %d: %s", resp.StatusCode, string(respBody))
 	}
 }
