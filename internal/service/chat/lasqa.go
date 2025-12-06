@@ -259,11 +259,11 @@ func (s *LasqaService) CheckDonationAlertsStatus() {
 	if changed := s.SetStatus(isOnline); changed {
 		text := "👀 Стример зашел в DonationAlerts"
 		s.chatService.SendMessageToChannel(text, "8845069", nil)
-		sendTwitchChatMessageLasqa(text)
+		s.sendTwitchChatMessageLasqa(text)
 	}
 }
 
-func sendTwitchChatMessageLasqa(message string) {
+func (s *LasqaService) sendTwitchChatMessageLasqa(message string) {
 	token := os.Getenv("TWITCH_TOKEN")
 	clientID := os.Getenv("TWITCH_CLIENT_ID")
 	if token == "" || clientID == "" {
@@ -282,12 +282,14 @@ func sendTwitchChatMessageLasqa(message string) {
 	}
 	bodyBytes, err := json.Marshal(payload)
 	if err != nil {
-		log.Error("twi: marshal payload: %w", err)
+		log.Error("twi: marshal payload: ", err)
+		return
 	}
 
 	req, err := http.NewRequest(http.MethodPost, helixURL, bytes.NewReader(bodyBytes))
 	if err != nil {
-		log.Error("twi: create request: %w", err)
+		log.Error("twi: create request: ", err)
+		return
 	}
 	req.Header.Set("Authorization", "Bearer "+token)
 	req.Header.Set("Client-Id", clientID)
@@ -296,12 +298,40 @@ func sendTwitchChatMessageLasqa(message string) {
 	client := &http.Client{Timeout: 10 * time.Second}
 	resp, err := client.Do(req)
 	if err != nil {
-		log.Error("twi: request failed: %w", err)
+		log.Error("twi: request failed: ", err)
 	}
 	defer resp.Body.Close()
 
+	respBody, err := io.ReadAll(resp.Body)
+	if err != nil {
+		log.Error("twi: read response body: ", err)
+		return
+	}
+
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-		respBody, _ := io.ReadAll(resp.Body)
-		log.Error("twi: non-2xx response: %d: %s", resp.StatusCode, string(respBody))
+		log.Errorf("twi: non-2xx response: %d: %s", resp.StatusCode, string(respBody))
+		return
+	}
+
+	// check Twitch response
+	type TwitchResponse struct {
+		Data []struct {
+			IsSent     bool `json:"is_sent"`
+			DropReason struct {
+				Code    string `json:"code"`
+				Message string `json:"message"`
+			} `json:"drop_reason"`
+		} `json:"data"`
+	}
+
+	var tr TwitchResponse
+	err = json.Unmarshal(respBody, &tr)
+	if err != nil {
+		log.Error("twi: unmarshal error: ", err)
+		return
+	}
+
+	if !tr.Data[0].IsSent {
+		log.Errorf("twi: message not sent: code = %s, message = %s ", tr.Data[0].DropReason.Code, tr.Data[0].DropReason.Message)
 	}
 }
