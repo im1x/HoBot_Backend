@@ -69,7 +69,7 @@ func (s *VkplService) refreshVkplToken() error {
 
 	reqUrl := "https://api.live.vkvideo.ru/oauth/token/"
 	reqData := url.Values{
-		"response_type": {"code"},
+		//"response_type": {"code"},
 		"refresh_token": {s.AuthVkpl.RefreshToken},
 		"grant_type":    {"refresh_token"},
 		"device_id":     {s.AuthVkpl.ClientID},
@@ -90,6 +90,14 @@ func (s *VkplService) refreshVkplToken() error {
 	resp, err := client.Do(req)
 	if resp.StatusCode != 200 || err != nil {
 		log.Error("Error while refreshing token:", err)
+		log.Error("Error while refreshing token: ", resp.StatusCode)
+		body, err := io.ReadAll(resp.Body)
+		if err != nil {
+			log.Error("Refresh token: Error while reading response body: ", err)
+			return err
+		}
+
+		log.Info("DEBUG VKPL: Token refreshed: ", string(body))
 		return err
 	}
 	defer resp.Body.Close()
@@ -101,11 +109,15 @@ func (s *VkplService) refreshVkplToken() error {
 		return err
 	}
 
+	log.Info("DEBUG VKPL: Token refreshed: ", string(body))
+
 	err = json.Unmarshal(body, &refreshResponse)
 	if err != nil {
 		log.Error("Error decoding refresh token:", err)
 		return err
 	}
+
+	log.Info("DEBUG VKPL: Token refreshed: ", refreshResponse)
 
 	s.AuthVkpl.AccessToken = refreshResponse.AccessToken
 	s.AuthVkpl.RefreshToken = refreshResponse.RefreshToken
@@ -115,5 +127,5 @@ func (s *VkplService) refreshVkplToken() error {
 }
 
 func (s *VkplService) isAuthNeedRefresh() bool {
-	return s.AuthVkpl.ExpiresAt < time.Now().Add(time.Minute*10).UnixMilli()
+	return s.AuthVkpl.ExpiresAt < time.Now().Add(time.Hour*24*10).UnixMilli()
 }
